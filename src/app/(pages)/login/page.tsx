@@ -2,12 +2,35 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "@/firebase";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // Redirect or show success
+    } catch (err: any) {
+      setError(err.message);
+      console.error("Login error:", err);
+    }
+  };
+
+  const handleGoogle = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      // Redirect or show success
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -26,7 +49,7 @@ const LoginPage = () => {
             <p className="text-sm text-red-600">Invalid email or password</p>
           </div>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleLogin}>
             {/* Email Input */}
             <div>
               <label
@@ -171,6 +194,7 @@ const LoginPage = () => {
             {/* Google OAuth Button */}
             <div>
               <button
+                onClick={handleGoogle}
                 type="button"
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
               >
