@@ -16,7 +16,13 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Redirect or show success
+      console.log("Login successful");
+      const user = auth.currentUser;
+      if (user) {
+        const token = await user.getIdToken();
+        document.cookie = `token=${token}; path=/;`;
+      }
+      console.log(user)
     } catch (err: any) {
       setError(err.message);
       console.error("Login error:", err);

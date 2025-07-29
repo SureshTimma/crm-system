@@ -2,14 +2,15 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
+// You can use environment variables from process.env or import from a config file
 const firebaseConfig = {
-  apiKey: "AIzaSyB9brz9AlwnWVyYseq4086Cy9LKTc4eca8",
-  authDomain: "prodgain-crm-system.firebaseapp.com",
-  projectId: "prodgain-crm-system",
-  storageBucket: "prodgain-crm-system.firebasestorage.app",
-  messagingSenderId: "1088281889727",
-  appId: "1:1088281889727:web:e9169c6d7f90b733636f0a",
-  measurementId: "G-71XR5PRYFD"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
