@@ -2,11 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "@/firebase";
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     displayName: "",
     email: "",
@@ -47,6 +50,26 @@ const RegisterPage = () => {
 
   const passwordStrength = getPasswordStrength(formData.password);
 
+  const handleRegister = async (e)=>{
+    e.preventDefault();
+    try {
+      await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      console.log("User registered successfully");
+    } catch (err: any) {
+      setError(err.message);
+    }
+
+  }
+
+  const handleGoogle = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      console.log("User registered with Google successfully");
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -64,7 +87,7 @@ const RegisterPage = () => {
             <p className="text-sm text-red-600">Please fix the errors below</p>
           </div>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleRegister}>
             {/* Display Name Input */}
             <div>
               <label
@@ -320,6 +343,7 @@ const RegisterPage = () => {
             {/* Google OAuth Button */}
             <div>
               <button
+                onClick={handleGoogle}
                 type="button"
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
               >
