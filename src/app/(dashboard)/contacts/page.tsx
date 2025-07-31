@@ -22,15 +22,30 @@ interface Contact extends Omit<ContactFormData, "tags"> {
   lastInteraction: Date;
 }
 
+// API Response interfaces for type safety
+interface ContactResponse {
+  success: boolean;
+  contact: Contact;
+}
+
+interface ContactsResponse {
+  success: boolean;
+  contacts: Contact[];
+}
+
 // Modal Component
-const CreateContactModal = ({
+const ContactModal = ({
   isOpen,
   onClose,
   onSubmit,
+  editingContact,
+  isEditing,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (contactData: Omit<Contact, "id">) => void;
+  onSubmit: (contactData: Omit<Contact, "_id">, isEdit?: boolean) => void;
+  editingContact?: Contact | null;
+  isEditing: boolean;
 }) => {
   const [formData, setFormData] = useState<ContactFormData>({
     name: "",
@@ -42,6 +57,31 @@ const CreateContactModal = ({
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // ✅ Pre-fill form when editing
+  useEffect(() => {
+    if (isEditing && editingContact) {
+      setFormData({
+        name: editingContact.name,
+        email: editingContact.email,
+        phone: editingContact.phone || "",
+        company: editingContact.company || "",
+        tags: editingContact.tags.join(", "),
+        notes: editingContact.notes || "",
+      });
+    } else {
+      // Reset form for new contact
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        company: "",
+        tags: "",
+        notes: "",
+      });
+    }
+    setErrors({});
+  }, [isEditing, editingContact, isOpen]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -81,29 +121,23 @@ const CreateContactModal = ({
     e.preventDefault();
 
     if (validateForm()) {
-      const contactData: Omit<Contact, "id"> = {
+      const contactData: Omit<Contact, "_id"> = {
         ...formData,
         tags: formData.tags
           ? formData.tags.split(",").map((tag) => tag.trim())
           : [],
-        createdAt: new Date(),
+        // ✅ Fix: Keep original createdAt, but use current form data for everything else
+        createdAt: editingContact?.createdAt || new Date(),
         updatedAt: new Date(),
         lastInteraction: new Date(),
       };
 
-      onSubmit(contactData);
+      console.log("Form data at submit:", formData); // ✅ Debug log
+      console.log("Submitting contact data:", contactData); // ✅ Debug log
 
-      // Reset form
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        company: "",
-        tags: "",
-        notes: "",
-      });
-      setErrors({});
-      onClose();
+      onSubmit(contactData, isEditing);
+
+      // ✅ Don't reset form or close modal here - let parent handle it
     }
   };
 
@@ -123,7 +157,7 @@ const CreateContactModal = ({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">
-              Create New Contact
+              {isEditing ? "Edit Contact" : "Create New Contact"}
             </h3>
             <button
               onClick={onClose}
@@ -147,7 +181,7 @@ const CreateContactModal = ({
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-12 space-y-4">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {/* Name */}
             <div>
               <label
@@ -286,9 +320,13 @@ const CreateContactModal = ({
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className={`flex-1 px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                  isEditing
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
               >
-                Create Contact
+                {isEditing ? "Update Contact" : "Create Contact"}
               </button>
             </div>
           </form>
@@ -301,28 +339,124 @@ const CreateContactModal = ({
 const ContactsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [refreshTrigger, setRefreshTrigger]=useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const handleCreateContact = async (contactData: Omit<Contact, "id">) => {
-    const newContact: Contact = { ...contactData, id: Date.now() };
-    setContacts((prev) => [...prev, newContact]);
+  const handleUpdateContact = async (contactData: Omit<Contact, "_id">) => {
+    try {
+      if (!editingContact) return;
 
-    const response = await axios.post("/api/dashboard/contacts", contactData);
-    console.log(response);
-    setRefreshTrigger((prev) => prev + 1);
+      console.log("Sending update data to backend:", contactData); // ✅ Debug log
+
+      const response = await axios.put(
+        `/api/dashboard/contacts?contactId=${editingContact._id}`,
+        contactData
+      );
+
+      console.log("Backend response:", response.data); // ✅ Debug log
+
+      if ((response.data as ContactResponse).success) {
+        // ✅ Update contact directly in state
+        setContacts((prevContacts) =>
+          prevContacts.map((contact) =>
+            contact._id === editingContact._id
+              ? { ...contact, ...contactData, updatedAt: new Date() }
+              : contact
+          )
+        );
+
+        // ✅ Close modal after successful update
+        closeModal();
+
+        console.log("Contact updated successfully");
+      } else {
+        console.error("Update failed:", response.data);
+      }
+    } catch (error) {
+      console.error("Error updating contact:", error);
+    }
   };
 
-  const handleDeleteContact = async (contactId) => {
-    const response = await axios.delete(`/api/dashboard/contacts?id=${contactId}`);
-    console.log(response.data);
-    setRefreshTrigger((prev) => prev + 1);
+  const handleCreateContact = async (contactData: Omit<Contact, "_id">) => {
+    try {
+      console.log("Sending create data to backend:", contactData); // ✅ Debug log
+
+      const response = await axios.post("/api/dashboard/contacts", contactData);
+      console.log("Create response:", response.data);
+
+      if ((response.data as ContactResponse).success) {
+        setRefreshTrigger((prev) => prev + 1);
+        closeModal(); // ✅ Close modal after successful creation
+      }
+    } catch (error) {
+      console.error("Error creating contact:", error);
+    }
+  };
+
+  const handleModalSubmit = (
+    contactData: Omit<Contact, "_id">,
+    isEdit?: boolean
+  ) => {
+    console.log("Modal submit - contactData:", contactData);
+    console.log("Modal submit - isEdit:", isEdit);
+
+    if (isEdit) {
+      handleUpdateContact(contactData);
+    } else {
+      handleCreateContact(contactData);
+    }
+  };
+
+  const handleDeleteContact = async (contactId: string) => {
+    try {
+      const response = await axios.delete(
+        `/api/dashboard/contacts?id=${contactId}`
+      );
+      console.log(response.data);
+      if ((response.data as ContactResponse).success) {
+        setRefreshTrigger((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error deleting contact:", error);
+    }
+  };
+
+  const openEditModal = (contact: Contact) => {
+    setEditingContact(contact);
+    setIsEditing(true);
+    setIsModalOpen(true);
+  };
+
+  const openCreateModal = () => {
+    setEditingContact(null);
+    setIsEditing(false);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingContact(null);
+    setIsEditing(false);
   };
 
   useEffect(() => {
     const fetchContacts = async () => {
-      const contactsData = await axios.get("/api/dashboard/contacts");
-      console.log(contactsData.data);
-      setContacts(contactsData.data);
+      try {
+        const contactsData = await axios.get("/api/dashboard/contacts");
+        console.log(contactsData.data);
+
+        // Handle both response formats
+        const responseData = contactsData.data as ContactsResponse;
+        if (responseData.success) {
+          setContacts(responseData.contacts);
+        } else {
+          // Fallback for array response
+          setContacts(contactsData.data as Contact[]);
+        }
+      } catch (error) {
+        console.error("Error fetching contacts:", error);
+      }
     };
     fetchContacts();
   }, [refreshTrigger]);
@@ -332,7 +466,7 @@ const ContactsPage = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Contacts</h1>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={openCreateModal}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center space-x-2"
         >
           <svg
@@ -352,7 +486,7 @@ const ContactsPage = () => {
         </button>
       </div>
 
-      {/* Contacts List (Demo) */}
+      {/* Contacts List */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">Recent Contacts</h3>
@@ -416,10 +550,7 @@ const ContactsPage = () => {
                       <button
                         className="text-gray-400 hover:text-blue-600 transition-colors duration-200"
                         title="Edit contact"
-                        onClick={() => {
-                          handleUpdateContact(contact._id);
-                          console.log("Edit contact:", contact._id);
-                        }}
+                        onClick={() => openEditModal(contact)}
                       >
                         <svg
                           className="w-5 h-5"
@@ -440,10 +571,7 @@ const ContactsPage = () => {
                       <button
                         className="text-gray-400 hover:text-red-600 transition-colors duration-200"
                         title="Delete contact"
-                        onClick={() => {
-                          handleDeleteContact(contact._id);
-                          console.log("Delete contact:", contact._id);
-                        }}
+                        onClick={() => handleDeleteContact(contact._id)}
                       >
                         <svg
                           className="w-5 h-5"
@@ -469,10 +597,12 @@ const ContactsPage = () => {
       </div>
 
       {/* Modal */}
-      <CreateContactModal
+      <ContactModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateContact}
+        onClose={closeModal}
+        onSubmit={handleModalSubmit}
+        editingContact={editingContact}
+        isEditing={isEditing}
       />
     </div>
   );

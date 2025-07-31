@@ -35,3 +35,30 @@ export const DELETE = async (req: Request) => {
     contact: response,
   });   
 };
+
+export const PUT = async (req: Request)=>{
+    const body = await req.json();
+    const url = new URL(req.url);
+    const _id = url.searchParams.get("contactId");
+    
+    console.log("Updating contact with ID:", _id);
+    console.log("Update data received:", body);
+    
+    const updatedContact = await ContactsModel.findByIdAndUpdate(
+        _id, 
+        {
+          ...body,
+          updatedAt: new Date(),
+        },
+        { new: true } // Return the updated document
+    );
+    
+    console.log("Updated contact:", updatedContact);
+    
+    return NextResponse.json({
+        success: true,
+        message: "Contact updated successfully",
+        contact: updatedContact,
+    });
+
+}
