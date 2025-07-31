@@ -14,8 +14,7 @@ export const POST = async (req: Request) => {
     const MongoUser = await UserModel.create({
       _id: uid,
       name,
-      email,
-      password,
+      email
     });
     console.log("User saved to MongoDB:", MongoUser);
 

@@ -62,8 +62,8 @@ const RegisterPage = () => {
       console.log("User registered successfully", userCreated);
       console.log("User data:", {
         uid: userCreated.user.uid,
-        email: formData.email,
-        displayName: formData.displayName,
+        email: userCreated.user.email,
+        displayName: userCreated.user.displayName,
       });
 
       const data = await axios.post("/api/register", {
