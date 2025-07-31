@@ -356,7 +356,8 @@ const ContactsPage = () => {
 
       console.log("Backend response:", response.data); // ✅ Debug log
 
-      if ((response.data as ContactResponse).success) {
+      const responseData = response.data as ContactResponse;
+      if (responseData.success) {
         // ✅ Update contact directly in state
         setContacts((prevContacts) =>
           prevContacts.map((contact) =>
@@ -372,9 +373,11 @@ const ContactsPage = () => {
         console.log("Contact updated successfully");
       } else {
         console.error("Update failed:", response.data);
+        alert("Failed to update contact. Please try again.");
       }
     } catch (error) {
       console.error("Error updating contact:", error);
+      alert("An error occurred while updating the contact.");
     }
   };
 
@@ -385,12 +388,18 @@ const ContactsPage = () => {
       const response = await axios.post("/api/dashboard/contacts", contactData);
       console.log("Create response:", response.data);
 
-      if ((response.data as ContactResponse).success) {
+      const responseData = response.data as ContactResponse;
+      if (responseData.success) {
         setRefreshTrigger((prev) => prev + 1);
         closeModal(); // ✅ Close modal after successful creation
+        console.log("Contact created successfully");
+      } else {
+        console.error("Creation failed:", response.data);
+        alert("Failed to create contact. Please try again.");
       }
     } catch (error) {
       console.error("Error creating contact:", error);
+      alert("An error occurred while creating the contact.");
     }
   };
 
