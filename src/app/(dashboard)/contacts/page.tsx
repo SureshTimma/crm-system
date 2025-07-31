@@ -354,7 +354,6 @@ const ContactsPage = () => {
         contactData
       );
 
-      console.log("Backend response:", response.data); // ✅ Debug log
 
       const responseData = response.data as ContactResponse;
       if (responseData.success) {
@@ -366,6 +365,13 @@ const ContactsPage = () => {
               : contact
           )
         );
+
+        await axios.post("/api/dashboard/activities",{
+          action: "contact_updated",
+          entityType: "contact",
+          entityId: editingContact._id,
+          entityName: contactData.name,
+        })
 
         // ✅ Close modal after successful update
         closeModal();
@@ -389,7 +395,15 @@ const ContactsPage = () => {
       if (responseData.success) {
         setRefreshTrigger((prev) => prev + 1);
         closeModal();
-        console.log("Contact created successfully",responseData);
+        // console.log("Contact created successfully", responseData);
+
+        await axios.post("./api/dashboard/activities", {
+          action: "contact_created",
+          entityType: "contact",
+          entityId: responseData.contact._id,
+          entityName: responseData.contact.name,
+        });
+        console.log("New activity logged:", newActivity.data);
       } else {
         console.error("Creation failed:", response.data);
         alert("Failed to create contact. Please try again.");
@@ -398,13 +412,6 @@ const ContactsPage = () => {
       console.error("Error creating contact:", error);
       alert("An error occurred while creating the contact.");
     }
-
-    const newActivity = await axios.post("./api/dashboard/activities", {
-      action: "contact_created",
-      entityType: "contact",
-      // entityId: responseData.contact._id,
-    }); 
-    console.log("New activity logged:", newActivity.data);
   };
 
   const handleModalSubmit = (
@@ -430,6 +437,12 @@ const ContactsPage = () => {
       if ((response.data as ContactResponse).success) {
         setRefreshTrigger((prev) => prev + 1);
       }
+      await axios.post("/api/dashboard/activities", {
+        action: "contact_deleted",
+        entityType: "contact",
+        entityId: contactId,
+        entityName: response.data.contact.name,
+      });
     } catch (error) {
       console.error("Error deleting contact:", error);
     }

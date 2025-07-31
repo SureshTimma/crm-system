@@ -31,7 +31,7 @@ const tagsSchema = new Schema({
 });
 
 const ActivitySchema = new Schema({
-  user: String,
+  user: { type: String, required: true },
   action: String,
   entityType: String,
   entityId: ObjectId,
