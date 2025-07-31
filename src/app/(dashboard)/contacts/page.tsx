@@ -383,16 +383,13 @@ const ContactsPage = () => {
 
   const handleCreateContact = async (contactData: Omit<Contact, "_id">) => {
     try {
-      console.log("Sending create data to backend:", contactData); // ✅ Debug log
-
       const response = await axios.post("/api/dashboard/contacts", contactData);
-      console.log("Create response:", response.data);
 
       const responseData = response.data as ContactResponse;
       if (responseData.success) {
         setRefreshTrigger((prev) => prev + 1);
-        closeModal(); // ✅ Close modal after successful creation
-        console.log("Contact created successfully");
+        closeModal();
+        console.log("Contact created successfully",responseData);
       } else {
         console.error("Creation failed:", response.data);
         alert("Failed to create contact. Please try again.");
@@ -401,6 +398,13 @@ const ContactsPage = () => {
       console.error("Error creating contact:", error);
       alert("An error occurred while creating the contact.");
     }
+
+    const newActivity = await axios.post("./api/dashboard/activities", {
+      action: "contact_created",
+      entityType: "contact",
+      // entityId: responseData.contact._id,
+    }); 
+    console.log("New activity logged:", newActivity.data);
   };
 
   const handleModalSubmit = (

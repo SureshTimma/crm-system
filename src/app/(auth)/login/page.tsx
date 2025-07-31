@@ -6,6 +6,7 @@ import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/firebase";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 
 const LoginPage = () => {
   const router = useRouter();
@@ -23,10 +24,12 @@ const LoginPage = () => {
         email,
         password
       );
-      console.log("Login successful");
+      console.log("Login successful",userCredentials);
       const idToken = await userCredentials.user.getIdToken();
       const sessionData = await axios.post("/api/auth/login", { idToken });
       console.log(sessionData);
+
+      await Cookies.set("userId", userCredentials.user.uid);
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message);

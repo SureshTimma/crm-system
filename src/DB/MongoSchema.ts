@@ -30,8 +30,18 @@ const tagsSchema = new Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
+const ActivitySchema = new Schema({
+  user: String,
+  action: String,
+  entityType: String,
+  entityId: ObjectId,
+  entityName: String,
+  timestamp: { type: Date, default: Date.now },
+})
+
 const UserModel = mongoose.models.User || mongoose.model("User", UserSchema);
 const ContactsModel =
   mongoose.models.Contact || mongoose.model("Contact", contactSchema);
 const TagsModel = mongoose.models.Tag || mongoose.model("Tag", tagsSchema);
-export { UserModel, ContactsModel, TagsModel };
+const ActivityModel = mongoose.models.Activity || mongoose.model("Activity", ActivitySchema);
+export { UserModel, ContactsModel, TagsModel, ActivityModel };
