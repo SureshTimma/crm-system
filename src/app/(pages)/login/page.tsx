@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/firebase";
+import axios from "axios";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +23,8 @@ const LoginPage = () => {
         const token = await user.getIdToken();
         document.cookie = `token=${token}; path=/;`;
       }
-      console.log(user)
+
+      console.log(user);
     } catch (err: any) {
       setError(err.message);
       console.error("Login error:", err);

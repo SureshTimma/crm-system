@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/firebase";
+import axios from "axios";
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -50,23 +51,43 @@ const RegisterPage = () => {
 
   const passwordStrength = getPasswordStrength(formData.password);
 
-  const handleRegister = async (e)=>{
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      console.log("User registered successfully");
-    } catch (err: any) {
-      setError(err.message);
-    }
+      const userCreated = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+      console.log("User registered successfully", userCreated);
+      console.log("User data:", {
+        uid: userCreated.user.uid,
+        email: formData.email,
+        displayName: formData.displayName,
+      });
 
-  }
+      const data = await axios.post("/api/register", {
+        uid: userCreated.user.uid,
+        name: formData.displayName,
+        email: formData.email,
+        password: formData.password,
+      });
+      console.log("Data from MongoDB:", data);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Registration failed";
+      setError(errorMessage);
+    }
+  };
 
   const handleGoogle = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
       console.log("User registered with Google successfully");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Google registration failed";
+      setError(errorMessage);
     }
   };
 
@@ -82,10 +103,12 @@ const RegisterPage = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {/* Error/Success Alert */}
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md hidden">
-            <p className="text-sm text-red-600">Please fix the errors below</p>
-          </div>
+          {/* Error Alert */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
 
           <form className="space-y-6" onSubmit={handleRegister}>
             {/* Display Name Input */}
