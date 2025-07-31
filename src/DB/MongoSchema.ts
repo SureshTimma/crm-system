@@ -9,5 +9,19 @@ const UserSchema = new Schema({
   password: String,
 });
 
+const contactSchema = new Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  phone: String,
+  company: String,
+  tags: [{ type: String, ref: "Tag" }],
+  notes: String,
+  createdBy: { type: ObjectId, ref: "User" },
+  createdAt: Date,
+  updatedAt: Date,
+  lastInteraction: Date,
+});
+
 const UserModel = mongoose.models.User || mongoose.model("User", UserSchema);
-export { UserModel };
+const ContactModel = mongoose.models.Contact || mongoose.model("Contact", contactSchema);
+export { UserModel, ContactModel };
