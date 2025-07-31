@@ -1,11 +1,12 @@
 import { MongoConnect } from "@/DB/MongoConnect";
-import { ContactModel } from "@/DB/MongoSchema";
+import { ContactsModel } from "@/DB/MongoSchema";
 import { NextResponse } from "next/server";
 
+await MongoConnect();
+
 export const POST = async (req: Request) => {
-    await MongoConnect();
     const body = await req.json();
-    const newContact = await ContactModel.create({
+    const newContact = await ContactsModel.create({
         ...body,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -16,4 +17,9 @@ export const POST = async (req: Request) => {
         message: "Contact created successfully",
         contact: newContact
     });
+}
+
+export const GET = async ()=>{
+    const contactsData = await ContactsModel.find().sort({ createdAt: -1 }).lean();
+    return NextResponse.json(contactsData);
 }

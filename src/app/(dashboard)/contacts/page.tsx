@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import axios from "axios";
+import {useEffect} from "react";
 
 // Types
 interface ContactFormData {
@@ -301,16 +302,26 @@ const ContactsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
 
-  const handleCreateContact = (contactData: Omit<Contact, "id">) => {
+  const handleCreateContact = async (contactData: Omit<Contact, "id">) => {
     console.log("Creating contact:", contactData);
 
     // Add the new contact to the list (for demo purposes)
     const newContact: Contact = { ...contactData, id: Date.now() };
     setContacts((prev) => [...prev, newContact]);
 
-    const response = axios.post("/api/dashboard/contacts", contactData);
+    const response = await axios.post("/api/dashboard/contacts", contactData);
     console.log(response);
   };
+
+  useEffect(()=>{
+    const fetchContacts = async ()=>{
+      const contactsData = await axios.get("/api/dashboard/contacts");
+      console.log(contactsData.data);
+      setContacts(contactsData.data);
+
+    }
+  fetchContacts();
+  },[]);
 
   return (
     <div>

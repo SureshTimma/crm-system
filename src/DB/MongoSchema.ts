@@ -23,5 +23,5 @@ const contactSchema = new Schema({
 });
 
 const UserModel = mongoose.models.User || mongoose.model("User", UserSchema);
-const ContactModel = mongoose.models.Contact || mongoose.model("Contact", contactSchema);
-export { UserModel, ContactModel };
+const ContactsModel = mongoose.models.Contact || mongoose.model("Contact", contactSchema);
+export { UserModel, ContactsModel };
