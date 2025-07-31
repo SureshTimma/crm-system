@@ -323,7 +323,7 @@ const TagsPage = () => {
   // Create Tag Handler
   const handleCreateTag = async (tagData: TagFormData) => {
     try {
-      const response = await axios.post("/api/dashboard/tags", {
+      const response = await axios.post("/api/tags", {
         ...tagData,
         usageCount: 0,
       });
@@ -349,7 +349,7 @@ const TagsPage = () => {
       console.log("Updating tag with data:", tagData);
 
       const response = await axios.put(
-        `/api/dashboard/tags?tagId=${editingTag._id}`,
+        `/api/tags?tagId=${editingTag._id}`,
         tagData
       );
 
@@ -389,7 +389,7 @@ const TagsPage = () => {
     }
 
     try {
-      const response = await axios.delete(`/api/dashboard/tags?id=${tagId}`);
+      const response = await axios.delete(`/api/tags?id=${tagId}`);
       console.log("Delete response:", response.data);
 
       const responseData = response.data as TagResponse;
@@ -440,7 +440,7 @@ const TagsPage = () => {
   useEffect(() => {
     const fetchTags = async () => {
       try {
-        const tagsData = await axios.get("/api/dashboard/tags");
+        const tagsData = await axios.get("/api/tags");
         const responseData = tagsData.data as TagsResponse;
         if (responseData.success) {
           setTags(responseData.tags);

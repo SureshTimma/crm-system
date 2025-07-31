@@ -350,10 +350,9 @@ const ContactsPage = () => {
       console.log("Sending update data to backend:", contactData); // ✅ Debug log
 
       const response = await axios.put(
-        `/api/dashboard/contacts?contactId=${editingContact._id}`,
+        `/api/contacts?contactId=${editingContact._id}`,
         contactData
       );
-
 
       const responseData = response.data as ContactResponse;
       if (responseData.success) {
@@ -366,12 +365,12 @@ const ContactsPage = () => {
           )
         );
 
-        await axios.post("/api/dashboard/activities",{
+        await axios.post("/api/activities", {
           action: "contact_updated",
           entityType: "contact",
           entityId: editingContact._id,
           entityName: contactData.name,
-        })
+        });
 
         // ✅ Close modal after successful update
         closeModal();
@@ -389,7 +388,7 @@ const ContactsPage = () => {
 
   const handleCreateContact = async (contactData: Omit<Contact, "_id">) => {
     try {
-      const response = await axios.post("/api/dashboard/contacts", contactData);
+      const response = await axios.post("/api/contacts", contactData);
 
       const responseData = response.data as ContactResponse;
       if (responseData.success) {
@@ -397,7 +396,7 @@ const ContactsPage = () => {
         closeModal();
         // console.log("Contact created successfully", responseData);
 
-        await axios.post("./api/dashboard/activities", {
+        await axios.post("./api/activities", {
           action: "contact_created",
           entityType: "contact",
           entityId: responseData.contact._id,
@@ -430,14 +429,12 @@ const ContactsPage = () => {
 
   const handleDeleteContact = async (contactId: string) => {
     try {
-      const response = await axios.delete(
-        `/api/dashboard/contacts?id=${contactId}`
-      );
+      const response = await axios.delete(`/api/contacts?id=${contactId}`);
       console.log(response.data);
       if ((response.data as ContactResponse).success) {
         setRefreshTrigger((prev) => prev + 1);
       }
-      await axios.post("/api/dashboard/activities", {
+      await axios.post("/api/activities", {
         action: "contact_deleted",
         entityType: "contact",
         entityId: contactId,
@@ -469,7 +466,7 @@ const ContactsPage = () => {
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        const contactsData = await axios.get("/api/dashboard/contacts");
+        const contactsData = await axios.get("/api/contacts");
         console.log(contactsData.data);
 
         // Handle both response formats

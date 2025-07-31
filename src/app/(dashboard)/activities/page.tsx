@@ -37,7 +37,7 @@ const ActivitiesPage = () => {
   const fetchActivities = async (pageNum = 0) => {
     try {
       const response = await axios.get(
-        `/api/dashboard/activities?page=${pageNum}&limit=20`
+        `/api/activities?page=${pageNum}&limit=20`
       );
       const responseData = response.data as ActivitiesResponse;
       if (responseData.success) {
