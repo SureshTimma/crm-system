@@ -5,8 +5,10 @@ import Link from "next/link";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/firebase";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 
 const LoginPage = () => {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [email, setEmail] = useState("");
@@ -16,15 +18,16 @@ const LoginPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredentials = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       console.log("Login successful");
-      const user = auth.currentUser;
-      if (user) {
-        const token = await user.getIdToken();
-        document.cookie = `token=${token}; path=/;`;
-      }
-
-      console.log(user);
+      const idToken = await userCredentials.user.getIdToken();
+      const sessionData = await axios.post("/api/auth/login", { idToken });
+      console.log(sessionData);
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err.message);
       console.error("Login error:", err);

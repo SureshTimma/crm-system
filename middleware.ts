@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
-// Only initialize once
+
 if (!getApps().length) {
   initializeApp({
     credential: cert({
@@ -14,10 +14,12 @@ if (!getApps().length) {
 }
 
 export async function middleware(req: NextRequest) {
-  const token = req.cookies.get("token")?.value;
+  const sessionCookie = req.cookies.get("session")?.value;
+  console.log("Session Cookie:", sessionCookie);
 
   // Allow public routes
   if (
+    req.nextUrl.pathname === "/" ||
     req.nextUrl.pathname.startsWith("/login") ||
     req.nextUrl.pathname.startsWith("/register") ||
     req.nextUrl.pathname.startsWith("/_next")
@@ -25,18 +27,26 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!token) {
+  if (!sessionCookie) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
   try {
-    await getAuth().verifyIdToken(token);
+    // Verify session cookie
+    await getAuth().verifySessionCookie(sessionCookie);
     return NextResponse.next();
   } catch (e) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    console.error("Session verification failed:", e);
+    const response = NextResponse.redirect(new URL("/login", req.url));
+    response.cookies.set("session", "", { expires: new Date(0) });
+    return response;
   }
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile/:path*"], // Protect these routes
+  matcher: [
+    "/dashboard/:path*",
+    "/profile/:path*",
+    // Add any other protected routes
+  ],
 };
