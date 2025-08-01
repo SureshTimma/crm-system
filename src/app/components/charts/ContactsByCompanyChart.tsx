@@ -56,13 +56,13 @@ const ContactsByCompanyChart: React.FC<ContactsByCompanyChartProps> = ({
   return (
     <div className="bg-white rounded-lg border shadow-sm p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-4">
-        Top 5 Companies by Contacts ({data.length} companies)
+        Top 5 Companies by Contacts
       </h2>
 
       <ResponsiveContainer width="100%" height={300}>
         <BarChart
           data={data}
-          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          margin={{ top: 20, right: 30, left: -20, bottom: 20 }}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
@@ -75,6 +75,7 @@ const ContactsByCompanyChart: React.FC<ContactsByCompanyChartProps> = ({
             textAnchor="end"
           />
           <YAxis
+            dataKey="contacts"
             type="number"
             domain={[0, "dataMax + 1"]}
             allowDecimals={false}
