@@ -3,8 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "firebase/auth";
-import { auth } from "@/firebase";
+import { useUser, type User } from "@/contexts/UserContext";
 
 // Icons (you can replace with your preferred icon library)
 const HomeIcon = () => (
@@ -185,25 +184,30 @@ export default function DashboardLayout({
   const [searchQuery, setSearchQuery] = useState("");
   const pathname = usePathname();
   const router = useRouter();
-
-  // Mock user data - replace with actual user context
-  const user = {
-    name: "John Doe",
-    email: "john@example.com",
-    avatar: "JD",
-  };
+  const { user, loading, logout } = useUser();
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
-      document.cookie =
-        "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/login");
+      await logout();
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
+
+  // Show loading state while user data is being fetched
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // If no user is found, redirect to login (this shouldn't happen due to middleware)
+  if (!user) {
+    router.push("/login");
+    return null;
+  }
 
   return (
     <div className="h-screen flex overflow-hidden bg-gray-100">
@@ -317,11 +321,11 @@ export default function DashboardLayout({
                 >
                   <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
                     <span className="text-sm font-medium text-white">
-                      {user.avatar}
+                      {user.name ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "U"}
                     </span>
                   </div>
                   <span className="ml-3 text-gray-700 text-sm font-medium hidden lg:block">
-                    {user.name}
+                    {user.name || user.displayName || "User"}
                   </span>
                   <ChevronDownIcon />
                 </button>
@@ -387,12 +391,6 @@ interface NavigationItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-interface User {
-  name: string;
-  email: string;
-  avatar: string;
-}
-
 interface SidebarContentProps {
   navigation: NavigationItem[];
   pathname: string;
@@ -420,12 +418,12 @@ function SidebarContent({
           <div className="flex-shrink-0">
             <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
               <span className="text-sm font-medium text-white">
-                {user.avatar}
+                {user.name ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "U"}
               </span>
             </div>
           </div>
           <div className="ml-3">
-            <p className="text-sm font-medium text-gray-900">{user.name}</p>
+            <p className="text-sm font-medium text-gray-900">{user.name || user.displayName || "User"}</p>
             <p className="text-xs text-gray-500">{user.email}</p>
           </div>
         </div>

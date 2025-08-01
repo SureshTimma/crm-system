@@ -66,13 +66,20 @@ const RegisterPage = () => {
         displayName: userCreated.user.displayName,
       });
 
-      const data = await axios.post("/api/register", {
+      const data = await axios.post("/api/auth/register", {
         uid: userCreated.user.uid,
         name: formData.displayName,
         email: formData.email,
-        password: formData.password,
       });
       console.log("Data from MongoDB:", data);
+      
+      // Create session
+      const idToken = await userCreated.user.getIdToken();
+      const sessionData = await axios.post("/api/auth/login", { idToken });
+      console.log("Session created:", sessionData.data);
+      
+      // Redirect to dashboard
+      window.location.href = "/dashboard";
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Registration failed";
@@ -82,8 +89,24 @@ const RegisterPage = () => {
 
   const handleGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
-      console.log("User registered with Google successfully");
+      const userCredentials = await signInWithPopup(auth, googleProvider);
+      console.log("User registered with Google successfully", userCredentials);
+      
+      // Save user to MongoDB
+      const data = await axios.post("/api/auth/register", {
+        uid: userCredentials.user.uid,
+        name: userCredentials.user.displayName || "Google User",
+        email: userCredentials.user.email,
+      });
+      console.log("Data from MongoDB:", data);
+      
+      // Create session
+      const idToken = await userCredentials.user.getIdToken();
+      const sessionData = await axios.post("/api/auth/login", { idToken });
+      console.log("Session created:", sessionData.data);
+      
+      // Redirect to dashboard
+      window.location.href = "/dashboard";
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Google registration failed";

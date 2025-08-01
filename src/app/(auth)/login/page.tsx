@@ -19,30 +19,55 @@ const LoginPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Sign in with Firebase
       const userCredentials = await signInWithEmailAndPassword(
         auth,
         email,
         password
       );
-      console.log("Login successful",userCredentials);
+      console.log("Login successful", userCredentials);
+      
+      // Get Firebase ID token
       const idToken = await userCredentials.user.getIdToken();
+      
+      // Create session via API
       const sessionData = await axios.post("/api/auth/login", { idToken });
-      console.log(sessionData);
+      console.log("Session created:", sessionData.data);
 
+      // Store user ID in cookie for additional reference (optional)
       await Cookies.set("userId", userCredentials.user.uid);
+      
+      // Redirect to dashboard
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMessage);
       console.error("Login error:", err);
     }
   };
 
   const handleGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
-      // Redirect or show success
-    } catch (err: any) {
-      setError(err.message);
+      // Sign in with Google
+      const userCredentials = await signInWithPopup(auth, googleProvider);
+      console.log("Google login successful", userCredentials);
+      
+      // Get Firebase ID token
+      const idToken = await userCredentials.user.getIdToken();
+      
+      // Create session via API
+      const sessionData = await axios.post("/api/auth/login", { idToken });
+      console.log("Session created:", sessionData.data);
+
+      // Store user ID in cookie for additional reference (optional)
+      await Cookies.set("userId", userCredentials.user.uid);
+      
+      // Redirect to dashboard
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Google login failed';
+      setError(errorMessage);
+      console.error("Google login error:", err);
     }
   };
 
