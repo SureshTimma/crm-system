@@ -321,7 +321,14 @@ export default function DashboardLayout({
                 >
                   <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
                     <span className="text-sm font-medium text-white">
-                      {user.name ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "U"}
+                      {user.name
+                        ? user.name
+                            .split(" ")
+                            .map((n: string) => n[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2)
+                        : "U"}
                     </span>
                   </div>
                   <span className="ml-3 text-gray-700 text-sm font-medium hidden lg:block">
@@ -418,12 +425,21 @@ function SidebarContent({
           <div className="flex-shrink-0">
             <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
               <span className="text-sm font-medium text-white">
-                {user.name ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "U"}
+                {user.name
+                  ? user.name
+                      .split(" ")
+                      .map((n: string) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2)
+                  : "U"}
               </span>
             </div>
           </div>
           <div className="ml-3">
-            <p className="text-sm font-medium text-gray-900">{user.name || user.displayName || "User"}</p>
+            <p className="text-sm font-medium text-gray-900">
+              {user.name || user.displayName || "User"}
+            </p>
             <p className="text-xs text-gray-500">{user.email}</p>
           </div>
         </div>

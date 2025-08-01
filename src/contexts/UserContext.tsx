@@ -83,36 +83,39 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      setLoading(true);
-      setError(null);
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (firebaseUser: FirebaseUser | null) => {
+        setLoading(true);
+        setError(null);
 
-      if (firebaseUser) {
-        try {
-          // Get user details from MongoDB first
-          const dbUser = await fetchUserFromDB(firebaseUser.uid);
-          
-          if (dbUser) {
-            setUser(dbUser);
-          } else {
-            // Fallback to Firebase user data
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || "",
-              name: firebaseUser.displayName || "User",
-              displayName: firebaseUser.displayName || undefined,
-            });
+        if (firebaseUser) {
+          try {
+            // Get user details from MongoDB first
+            const dbUser = await fetchUserFromDB(firebaseUser.uid);
+
+            if (dbUser) {
+              setUser(dbUser);
+            } else {
+              // Fallback to Firebase user data
+              setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email || "",
+                name: firebaseUser.displayName || "User",
+                displayName: firebaseUser.displayName || undefined,
+              });
+            }
+          } catch (err) {
+            console.error("Error setting up user:", err);
+            setError("Failed to load user data");
           }
-        } catch (err) {
-          console.error("Error setting up user:", err);
-          setError("Failed to load user data");
+        } else {
+          setUser(null);
         }
-      } else {
-        setUser(null);
-      }
 
-      setLoading(false);
-    });
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, []);

@@ -26,21 +26,21 @@ const LoginPage = () => {
         password
       );
       console.log("Login successful", userCredentials);
-      
+
       // Get Firebase ID token
       const idToken = await userCredentials.user.getIdToken();
-      
+
       // Create session via API
       const sessionData = await axios.post("/api/auth/login", { idToken });
       console.log("Session created:", sessionData.data);
 
       // Store user ID in cookie for additional reference (optional)
       await Cookies.set("userId", userCredentials.user.uid);
-      
+
       // Redirect to dashboard
       router.push("/dashboard");
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      const errorMessage = err instanceof Error ? err.message : "Login failed";
       setError(errorMessage);
       console.error("Login error:", err);
     }
@@ -51,21 +51,22 @@ const LoginPage = () => {
       // Sign in with Google
       const userCredentials = await signInWithPopup(auth, googleProvider);
       console.log("Google login successful", userCredentials);
-      
+
       // Get Firebase ID token
       const idToken = await userCredentials.user.getIdToken();
-      
+
       // Create session via API
       const sessionData = await axios.post("/api/auth/login", { idToken });
       console.log("Session created:", sessionData.data);
 
       // Store user ID in cookie for additional reference (optional)
       await Cookies.set("userId", userCredentials.user.uid);
-      
+
       // Redirect to dashboard
       router.push("/dashboard");
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Google login failed';
+      const errorMessage =
+        err instanceof Error ? err.message : "Google login failed";
       setError(errorMessage);
       console.error("Google login error:", err);
     }

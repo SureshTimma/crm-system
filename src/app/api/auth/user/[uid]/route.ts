@@ -8,9 +8,9 @@ export async function GET(
 ) {
   try {
     await MongoConnect();
-    
+
     const { uid } = params;
-    
+
     if (!uid) {
       return NextResponse.json(
         { error: "User ID is required" },
@@ -19,12 +19,9 @@ export async function GET(
     }
 
     const user = await UserModel.findById(uid).lean();
-    
+
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Return user data without sensitive information
@@ -41,9 +38,9 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching user:", error);
     return NextResponse.json(
-      { 
+      {
         error: "Internal server error",
-        details: error instanceof Error ? error.message : error 
+        details: error instanceof Error ? error.message : error,
       },
       { status: 500 }
     );

@@ -72,12 +72,12 @@ const RegisterPage = () => {
         email: formData.email,
       });
       console.log("Data from MongoDB:", data);
-      
+
       // Create session
       const idToken = await userCreated.user.getIdToken();
       const sessionData = await axios.post("/api/auth/login", { idToken });
       console.log("Session created:", sessionData.data);
-      
+
       // Redirect to dashboard
       window.location.href = "/dashboard";
     } catch (err: unknown) {
@@ -91,7 +91,7 @@ const RegisterPage = () => {
     try {
       const userCredentials = await signInWithPopup(auth, googleProvider);
       console.log("User registered with Google successfully", userCredentials);
-      
+
       // Save user to MongoDB
       const data = await axios.post("/api/auth/register", {
         uid: userCredentials.user.uid,
@@ -99,12 +99,12 @@ const RegisterPage = () => {
         email: userCredentials.user.email,
       });
       console.log("Data from MongoDB:", data);
-      
+
       // Create session
       const idToken = await userCredentials.user.getIdToken();
       const sessionData = await axios.post("/api/auth/login", { idToken });
       console.log("Session created:", sessionData.data);
-      
+
       // Redirect to dashboard
       window.location.href = "/dashboard";
     } catch (err: unknown) {

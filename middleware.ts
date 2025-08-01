@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
-
 if (!getApps().length) {
   initializeApp({
     credential: cert({
@@ -40,13 +39,16 @@ export async function middleware(req: NextRequest) {
     // Verify session cookie and get user data
     const decodedToken = await getAuth().verifySessionCookie(sessionCookie);
     console.log("Session verified for user:", decodedToken.uid);
-    
+
     // Add user info to request headers for use in components
     const response = NextResponse.next();
-    response.headers.set('x-user-id', decodedToken.uid);
-    response.headers.set('x-user-email', decodedToken.email || '');
-    response.headers.set('x-user-name', decodedToken.name || decodedToken.display_name || '');
-    
+    response.headers.set("x-user-id", decodedToken.uid);
+    response.headers.set("x-user-email", decodedToken.email || "");
+    response.headers.set(
+      "x-user-name",
+      decodedToken.name || decodedToken.display_name || ""
+    );
+
     return response;
   } catch (e) {
     console.error("Session verification failed:", e);
