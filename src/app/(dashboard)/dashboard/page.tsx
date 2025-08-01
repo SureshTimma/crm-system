@@ -76,6 +76,12 @@ const DashboardPage = () => {
   const timelineData = getActivitiesTimeline(activities);
   const tagData = getTagDistribution(tags);
 
+  // Debug: Log the processed data
+  console.log("Dashboard Debug - Contacts:", contacts.length);
+  console.log("Dashboard Debug - Company Data:", companyData);
+  console.log("Dashboard Debug - Activities:", activities.length);
+  console.log("Dashboard Debug - Tags:", tags.length);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
