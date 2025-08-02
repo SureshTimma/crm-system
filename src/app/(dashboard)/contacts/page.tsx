@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useEffect } from "react";
+import { CSVUploader } from "@/app/components/contacts/CSVUploader";
 
 // Types
 interface ContactFormData {
@@ -342,6 +343,7 @@ const ContactsPage = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [showCSVUploader, setShowCSVUploader] = useState(false);
 
   const handleUpdateContact = async (contactData: Omit<Contact, "_id">) => {
     try {
@@ -488,25 +490,46 @@ const ContactsPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Contacts</h1>
-        <button
-          onClick={openCreateModal}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center space-x-2"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowCSVUploader(true)}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center space-x-2"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-            />
-          </svg>
-          <span>Create Contact</span>
-        </button>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <span>Import CSV</span>
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center space-x-2"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+            <span>Create Contact</span>
+          </button>
+        </div>
       </div>
 
       {/* Contacts List */}
@@ -627,6 +650,17 @@ const ContactsPage = () => {
         editingContact={editingContact}
         isEditing={isEditing}
       />
+
+      {/* CSV Uploader */}
+      {showCSVUploader && (
+        <CSVUploader
+          onClose={() => setShowCSVUploader(false)}
+          onImportComplete={() => {
+            setRefreshTrigger((prev) => prev + 1);
+            setShowCSVUploader(false);
+          }}
+        />
+      )}
     </div>
   );
 };

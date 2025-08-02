@@ -1,0 +1,11 @@
+name,email,phone,company,notes,tags
+John Doe,john.doe@example.com,+1-555-0123,Acme Corporation,Important client contact,vip;lead
+Jane Smith,jane.smith@techcorp.com,+1-555-0124,Tech Corp,Software developer prospect,prospect;tech
+Bob Johnson,bob.johnson@startup.io,+1-555-0125,Startup XYZ,Early stage startup founder,startup;entrepreneur
+Alice Brown,alice.brown@consulting.com,+1-555-0126,Brown Consulting,Management consultant,consultant;enterprise
+Mike Wilson,mike.wilson@retail.com,+1-555-0127,Retail Plus,Retail chain manager,retail;manager
+Sarah Davis,sarah.davis@finance.com,+1-555-0128,Finance Solutions,Financial advisor,finance;advisor
+Tom Garcia,tom.garcia@design.com,+1-555-0129,Design Studio,Creative director,design;creative
+Lisa Rodriguez,lisa.rodriguez@marketing.com,+1-555-0130,Marketing Pro,Marketing specialist,marketing;lead
+David Kim,david.kim@healthcare.com,+1-555-0131,Health Solutions,Healthcare administrator,healthcare;admin
+Emma Thompson,emma.thompson@education.com,+1-555-0132,Edu Institute,Education coordinator,education;coordinator

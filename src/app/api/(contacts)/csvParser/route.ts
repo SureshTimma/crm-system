@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import csv from "csv-parser";
-import fs from "fs";
-import path from "path";
 import { Readable } from "stream";
+import { ContactsModel, TagsModel } from "@/DB/MongoSchema";
+import { MongoConnect } from "@/DB/MongoConnect";
+
+interface CSVRow {
+  name: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  notes?: string;
+  tags?: string;
+}
 
 export async function POST(req: NextRequest) {
   try {
+    await MongoConnect();
+
     const data = await req.formData();
     const file = data.get("file") as File;
 
@@ -22,26 +33,153 @@ export async function POST(req: NextRequest) {
     }
 
     const text = await file.text();
-    const results: any[] = [];
+    const csvRows: CSVRow[] = [];
+    const importResults = {
+      success: 0,
+      failed: 0,
+      errors: [] as Array<{ row: CSVRow; reason: string }>,
+      duplicates: 0,
+    };
 
-    return new Promise((resolve) => {
+    // Parse CSV first
+    return new Promise(async (resolve) => {
       const readable = Readable.from([text]);
 
       readable
         .pipe(csv())
-        .on("data", (data) => {
-          results.push(data);
+        .on("data", (data: CSVRow) => {
+          csvRows.push(data);
         })
-        .on("end", () => {
-          resolve(
-            NextResponse.json({
-              success: true,
-              data: results,
-              count: results.length,
-            })
-          );
+        .on("end", async () => {
+          try {
+            // Process each row and save to database
+            for (const row of csvRows) {
+              try {
+                const { name, email, phone, company, notes, tags } = row;
+
+                // Validate required fields
+                if (!name || !email) {
+                  importResults.failed++;
+                  importResults.errors.push({
+                    row: row,
+                    reason: "Missing required fields (name or email)",
+                  });
+                  continue;
+                }
+
+                // Validate email format
+                if (!/\S+@\S+\.\S+/.test(email)) {
+                  importResults.failed++;
+                  importResults.errors.push({
+                    row: row,
+                    reason: "Invalid email format",
+                  });
+                  continue;
+                }
+
+                // Check for duplicate email
+                const existingContact = await ContactsModel.findOne({
+                  email: email.toLowerCase(),
+                });
+                if (existingContact) {
+                  importResults.duplicates++;
+                  importResults.errors.push({
+                    row: row,
+                    reason: "Contact with this email already exists",
+                  });
+                  continue;
+                }
+
+                // Process tags if provided
+                const processedTags: string[] = [];
+                if (tags && tags.trim()) {
+                  const tagNames = tags
+                    .split(";")
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag);
+
+                  // Create or find tags
+                  for (const tagName of tagNames) {
+                    let tag = await TagsModel.findOne({ tagName });
+                    if (!tag) {
+                      tag = new TagsModel({
+                        tagName,
+                        color: "#3B82F6", // Default blue color
+                        usageCount: 1,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                      });
+                      await tag.save();
+                    } else {
+                      // Increment usage count
+                      tag.usageCount = (tag.usageCount || 0) + 1;
+                      tag.updatedAt = new Date();
+                      await tag.save();
+                    }
+                    processedTags.push(tag._id.toString());
+                  }
+                }
+
+                // Create new contact
+                const newContact = new ContactsModel({
+                  name: name.trim(),
+                  email: email.toLowerCase().trim(),
+                  phone: phone?.trim() || "",
+                  company: company?.trim() || "",
+                  notes: notes?.trim() || "",
+                  tags: processedTags,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                  lastInteraction: new Date(),
+                });
+
+                await newContact.save();
+                importResults.success++;
+              } catch (contactError) {
+                console.error("Error processing contact:", contactError);
+                importResults.failed++;
+                importResults.errors.push({
+                  row: row,
+                  reason: `Database error: ${
+                    contactError instanceof Error
+                      ? contactError.message
+                      : "Unknown error"
+                  }`,
+                });
+              }
+            }
+
+            resolve(
+              NextResponse.json({
+                success: true,
+                message: "CSV import completed",
+                results: {
+                  totalRows: csvRows.length,
+                  successful: importResults.success,
+                  failed: importResults.failed,
+                  duplicates: importResults.duplicates,
+                  errors: importResults.errors,
+                },
+              })
+            );
+          } catch (processingError) {
+            console.error("Error processing CSV data:", processingError);
+            resolve(
+              NextResponse.json(
+                {
+                  error: "Error processing CSV data",
+                  details:
+                    processingError instanceof Error
+                      ? processingError.message
+                      : "Unknown error",
+                },
+                { status: 500 }
+              )
+            );
+          }
         })
         .on("error", (error) => {
+          console.error("CSV parsing error:", error);
           resolve(
             NextResponse.json(
               { error: "Failed to parse CSV file", details: error.message },
@@ -51,7 +189,7 @@ export async function POST(req: NextRequest) {
         });
     });
   } catch (error) {
-    console.error("CSV parsing error:", error);
+    console.error("CSV import error:", error);
     return NextResponse.json(
       {
         error: "Internal server error",
