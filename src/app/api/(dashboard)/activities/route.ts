@@ -1,26 +1,66 @@
-import { ActivityModel, UserModel } from "@/DB/MongoSchema";
+import { ActivityModel } from "@/DB/MongoSchema";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { MongoConnect } from "@/DB/MongoConnect";
+import mongoose from "mongoose";
+
+interface PopulatedUser {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+interface PopulatedActivity {
+  _id: string;
+  user?: PopulatedUser;
+  action: string;
+  entityType: string;
+  entityId: string;
+  entityName: string;
+  timestamp: Date;
+}
 
 export const POST = async (req: Request) => {
-  const cookie = await cookies();
-  const userId = cookie.get("userId")?.value.toString() || "anonymous"; // Default to 'anonymous' if no userId cookie is found
-  console.log("userid", userId);
-  await MongoConnect();
-  const { action, entityType, entityId, entityName } = await req.json();
-  const response = await ActivityModel.create({
-    user: userId,
-    action,
-    entityType,
-    entityId,
-    entityName,
-  });
+  try {
+    const cookie = await cookies();
+    const userId =
+      cookie.get("userId")?.value.toString() || "placeholder-user-id"; // Default placeholder
+    console.log("userid", userId);
 
-  return NextResponse.json({
-    success: true,
-    response,
-  });
+    await MongoConnect();
+    const { action, entityType, entityId, entityName } = await req.json();
+
+    // Convert userId to ObjectId if it's a valid ObjectId string
+    let userObjectId;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      userObjectId = new mongoose.Types.ObjectId(userId);
+    } else {
+      userObjectId = new mongoose.Types.ObjectId(); // Create a new ObjectId for placeholder
+    }
+
+    const response = await ActivityModel.create({
+      user: userObjectId,
+      action,
+      entityType,
+      entityId: new mongoose.Types.ObjectId(entityId),
+      entityName,
+    });
+
+    return NextResponse.json({
+      success: true,
+      response,
+    });
+  } catch (error) {
+    console.error("Error creating activity:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to create activity",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
 };
 
 export const GET = async () => {
@@ -28,31 +68,19 @@ export const GET = async () => {
     await MongoConnect();
 
     const activities = await ActivityModel.find({})
+      .populate("user", "name email")
       .sort({ timestamp: -1 })
       .limit(50)
       .lean();
 
-    // Get unique user IDs from activities
-    const userIds = [...new Set(activities.map((activity) => activity.user))];
-
-    // Fetch user details for all user IDs
-    const users = await UserModel.find({ _id: { $in: userIds } }).lean();
-
-    // Create a map of user ID to user details
-    const userMap = users.reduce((acc, user) => {
-      acc[user._id] = {
-        name: user.name || "Unknown User",
-        email: user.email || "",
-      };
-      return acc;
-    }, {} as Record<string, { name: string; email: string }>);
-
-    // Enhance activities with user details
-    const activitiesWithUserDetails = activities.map((activity) => ({
-      ...activity,
-      userName: userMap[activity.user]?.name || "Unknown User",
-      userEmail: userMap[activity.user]?.email || "",
-    }));
+    // Transform the populated data
+    const activitiesWithUserDetails = activities.map(
+      (activity: PopulatedActivity) => ({
+        ...activity,
+        userName: activity.user?.name || "Unknown User",
+        userEmail: activity.user?.email || "",
+      })
+    );
 
     return NextResponse.json({
       success: true,

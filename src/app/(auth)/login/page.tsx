@@ -199,7 +199,7 @@ const LoginPage = () => {
               {/* Forgot Password Link */}
               <div className="text-sm">
                 <Link
-                  href="/forgot-password"
+                  href="/password-reset"
                   className="font-medium text-blue-600 hover:text-blue-500"
                 >
                   Forgot your password?

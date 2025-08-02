@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useEffect } from "react";
 import { CSVUploader } from "@/app/components/contacts/CSVUploader";
+import ContactModal from "@/app/components/contacts/ContactModal";
+import ContactCard from "@/app/components/contacts/ContactCard";
 
-// Types
+// STEP 1: TYPE DEFINITIONS (as per Project_Interns.txt requirements)
 interface ContactFormData {
   name: string;
   email: string;
@@ -23,7 +24,6 @@ interface Contact extends Omit<ContactFormData, "tags"> {
   lastInteraction: Date;
 }
 
-// Tag interface
 interface Tag {
   _id: string;
   tagName: string;
@@ -31,501 +31,143 @@ interface Tag {
   usageCount: number;
 }
 
-// API Response interfaces for type safety
 interface ContactResponse {
   success: boolean;
   contact: Contact;
 }
 
-interface ContactsResponse {
-  success: boolean;
-  contacts: Contact[];
-}
-
-// Modal Component
-const ContactModal = ({
-  isOpen,
-  onClose,
-  onSubmit,
-  editingContact,
-  isEditing,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (contactData: Omit<Contact, "_id">, isEdit?: boolean) => void;
-  editingContact?: Contact | null;
-  isEditing: boolean;
-}) => {
-  const [formData, setFormData] = useState<ContactFormData>({
-    name: "",
-    email: "",
-    phone: "",
-    company: "",
-    tags: "",
-    notes: "",
-  });
-
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [showTagDropdown, setShowTagDropdown] = useState(false);
-
-  // Click outside handler for tag dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (showTagDropdown && !target.closest(".tag-dropdown-container")) {
-        setShowTagDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showTagDropdown]);
-
-  // ✅ Pre-fill form when editing
-  useEffect(() => {
-    if (isEditing && editingContact) {
-      setFormData({
-        name: editingContact.name,
-        email: editingContact.email,
-        phone: editingContact.phone || "",
-        company: editingContact.company || "",
-        tags: editingContact.tags.join(", "),
-        notes: editingContact.notes || "",
-      });
-      setSelectedTags(editingContact.tags || []);
-    } else {
-      // Reset form for new contact
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        company: "",
-        tags: "",
-        notes: "",
-      });
-      setSelectedTags([]);
-    }
-    setErrors({});
-  }, [isEditing, editingContact, isOpen]);
-
-  // Fetch available tags
-  useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        const response = await axios.get("/api/tags");
-        const tagsData = response.data as { success: boolean; tags: Tag[] };
-        if (tagsData.success) {
-          setAvailableTags(tagsData.tags);
-        }
-      } catch (error) {
-        console.error("Error fetching tags:", error);
-      }
-    };
-
-    if (isOpen) {
-      fetchTags();
-    }
-  }, [isOpen]);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Update selectedTags when tags input changes manually
-    if (name === "tags") {
-      const tagArray = value
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag);
-      setSelectedTags(tagArray);
-    }
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
-  };
-
-  const handleTagSelect = (tagName: string) => {
-    if (!selectedTags.includes(tagName)) {
-      const newSelectedTags = [...selectedTags, tagName];
-      setSelectedTags(newSelectedTags);
-      setFormData((prev) => ({
-        ...prev,
-        tags: newSelectedTags.join(", "),
-      }));
-    }
-    setShowTagDropdown(false);
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    const newSelectedTags = selectedTags.filter((tag) => tag !== tagToRemove);
-    setSelectedTags(newSelectedTags);
-    setFormData((prev) => ({
-      ...prev,
-      tags: newSelectedTags.join(", "),
-    }));
-  };
-
-  const validateForm = () => {
-    const newErrors: { [key: string]: string } = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      const contactData: Omit<Contact, "_id"> = {
-        ...formData,
-        tags: formData.tags
-          ? formData.tags.split(",").map((tag) => tag.trim())
-          : [],
-        // ✅ Fix: Keep original createdAt, but use current form data for everything else
-        createdAt: editingContact?.createdAt || new Date(),
-        updatedAt: new Date(),
-        lastInteraction: new Date(),
-      };
-
-      console.log("Form data at submit:", formData); // ✅ Debug log
-      console.log("Submitting contact data:", contactData); // ✅ Debug log
-
-      onSubmit(contactData, isEditing);
-
-      // ✅ Don't reset form or close modal here - let parent handle it
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
-      ></div>
-
-      {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md transform transition-all">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {isEditing ? "Edit Contact" : "Create New Contact"}
-            </h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              title="Close modal"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Name */}
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Name *
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.name ? "border-red-300" : "border-gray-300"
-                }`}
-                placeholder="Enter full name"
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-              )}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Email *
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.email ? "border-red-300" : "border-gray-300"
-                }`}
-                placeholder="Enter email address"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Phone
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter phone number"
-              />
-            </div>
-
-            {/* Company */}
-            <div>
-              <label
-                htmlFor="company"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Company
-              </label>
-              <input
-                type="text"
-                id="company"
-                name="company"
-                value={formData.company}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter company name"
-              />
-            </div>
-
-            {/* Tags */}
-            <div className="relative tag-dropdown-container">
-              <label
-                htmlFor="tags"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Tags
-              </label>
-
-              {/* Selected Tags Display */}
-              <div className="mb-2">
-                {selectedTags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedTags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                      >
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => removeTag(tag)}
-                          className="ml-1 text-blue-600 hover:text-blue-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Tag Selection Dropdown */}
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setShowTagDropdown(!showTagDropdown)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center"
-                >
-                  <span className="text-gray-500">
-                    {selectedTags.length > 0
-                      ? `${selectedTags.length} tag(s) selected`
-                      : "Select tags..."}
-                  </span>
-                  <svg
-                    className={`w-5 h-5 text-gray-400 transition-transform ${
-                      showTagDropdown ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-
-                {/* Dropdown Options */}
-                {showTagDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                    {availableTags.length > 0 ? (
-                      availableTags.map((tag) => (
-                        <button
-                          key={tag._id}
-                          type="button"
-                          onClick={() => handleTagSelect(tag.tagName)}
-                          disabled={selectedTags.includes(tag.tagName)}
-                          className={`w-full px-3 py-2 text-left hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${
-                            selectedTags.includes(tag.tagName)
-                              ? "bg-blue-50 text-blue-700"
-                              : "text-gray-900"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span>{tag.tagName}</span>
-                            <div
-                              className="w-3 h-3 rounded-full border border-gray-200"
-                              title={`Color: ${tag.color}`}
-                            />
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="px-3 py-2 text-gray-500 text-sm">
-                        No tags available. Create some tags first.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Manual Tag Input */}
-              <input
-                type="text"
-                id="tags"
-                name="tags"
-                value={formData.tags}
-                onChange={handleInputChange}
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Or enter tags manually (comma-separated)"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Select from dropdown above or enter tags manually separated by
-                commas
-              </p>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label
-                htmlFor="notes"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Notes
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                rows={3}
-                value={formData.notes}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter any additional notes"
-              />
-            </div>
-
-            {/* Buttons */}
-            <div className="flex space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className={`flex-1 px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  isEditing
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                {isEditing ? "Update Contact" : "Create Contact"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const ContactsPage = () => {
+  // STEP 2: STATE MANAGEMENT (simplified according to requirements)
+
+  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  // CSV uploader state
   const [showCSVUploader, setShowCSVUploader] = useState(false);
 
+  // Main data states
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Search and Filter states (as per PDF requirements)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTagFilter, setSelectedTagFilter] = useState("");
+
+  // Pagination states (backend pagination)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Bulk actions state (as per PDF requirements)
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+
+  // Refresh trigger for re-fetching data
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // STEP 3: BACKEND DATA FETCHING (All operations handled by backend)
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        setLoading(true);
+
+        // Build query parameters for backend API
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: "20", // Show 20 contacts per page
+          sortBy: "name", // Default sort by name
+          sortOrder: "asc", // Ascending order
+        });
+
+        // Add search term if provided
+        if (searchTerm) {
+          params.append("search", searchTerm);
+        }
+
+        // Add tag filter if selected
+        if (selectedTagFilter) {
+          params.append("tag", selectedTagFilter);
+        }
+
+        // Call backend API
+        const response = await axios.get(`/api/contacts?${params.toString()}`);
+
+        // Type the response data for TypeScript
+        const data = response.data as {
+          success: boolean;
+          contacts: Contact[];
+          pagination: {
+            currentPage: number;
+            totalPages: number;
+            totalCount: number;
+          };
+        };
+
+        if (data.success) {
+          setContacts(data.contacts);
+          setCurrentPage(data.pagination.currentPage);
+          setTotalPages(data.pagination.totalPages);
+          setTotalCount(data.pagination.totalCount);
+        }
+      } catch (error) {
+        console.error("Error fetching contacts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Debounced search - wait 300ms after user stops typing
+    const timeoutId = setTimeout(fetchContacts, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, selectedTagFilter, currentPage, refreshTrigger]);
+
+  // STEP 4: CLEAR SELECTIONS WHEN FILTERS CHANGE
+  useEffect(() => {
+    setSelectedContacts([]); // Clear bulk selections when page/filters change
+  }, [currentPage, searchTerm, selectedTagFilter]);
+
+  // STEP 5: CRUD OPERATIONS (Create, Read, Update, Delete)
+
+  // Create new contact
+  const handleCreateContact = async (contactData: Omit<Contact, "_id">) => {
+    try {
+      const response = await axios.post("/api/contacts", contactData);
+      const data = response.data as ContactResponse;
+
+      if (data.success) {
+        // Refresh the contacts list
+        setRefreshTrigger((prev) => prev + 1);
+        closeModal();
+
+        // Log activity for audit trail
+        await axios.post("/api/activities", {
+          action: "contact_created",
+          entityType: "contact",
+          entityId: data.contact._id,
+          entityName: data.contact.name,
+        });
+      }
+    } catch (error) {
+      console.error("Error creating contact:", error);
+      alert("Failed to create contact. Please try again.");
+    }
+  };
+
+  // Update existing contact
   const handleUpdateContact = async (contactData: Omit<Contact, "_id">) => {
     try {
       if (!editingContact) return;
-
-      console.log("Sending update data to backend:", contactData); // ✅ Debug log
 
       const response = await axios.put(
         `/api/contacts?contactId=${editingContact._id}`,
         contactData
       );
+      const data = response.data as ContactResponse;
 
-      const responseData = response.data as ContactResponse;
-      if (responseData.success) {
-        // ✅ Update contact directly in state
+      if (data.success) {
+        // Update contact in local state (optimistic update)
         setContacts((prevContacts) =>
           prevContacts.map((contact) =>
             contact._id === editingContact._id
@@ -534,83 +176,53 @@ const ContactsPage = () => {
           )
         );
 
+        closeModal();
+
+        // Log activity
         await axios.post("/api/activities", {
           action: "contact_updated",
           entityType: "contact",
           entityId: editingContact._id,
           entityName: contactData.name,
         });
-
-        // ✅ Close modal after successful update
-        closeModal();
-
-        console.log("Contact updated successfully");
-      } else {
-        console.error("Update failed:", response.data);
-        alert("Failed to update contact. Please try again.");
       }
     } catch (error) {
       console.error("Error updating contact:", error);
-      alert("An error occurred while updating the contact.");
+      alert("Failed to update contact. Please try again.");
     }
   };
 
-  const handleCreateContact = async (contactData: Omit<Contact, "_id">) => {
+  // Delete single contact
+  const handleDeleteContact = async (contactId: string) => {
     try {
-      const response = await axios.post("/api/contacts", contactData);
+      const response = await axios.delete(`/api/contacts?id=${contactId}`);
+      const data = response.data as ContactResponse;
 
-      const responseData = response.data as ContactResponse;
-      if (responseData.success) {
+      if (data.success) {
         setRefreshTrigger((prev) => prev + 1);
-        closeModal();
-        // console.log("Contact created successfully", responseData);
 
-        await axios.post("./api/activities", {
-          action: "contact_created",
+        // Log activity
+        await axios.post("/api/activities", {
+          action: "contact_deleted",
           entityType: "contact",
-          entityId: responseData.contact._id,
-          entityName: responseData.contact.name,
+          entityId: contactId,
+          entityName: "Deleted Contact",
         });
-        console.log("New activity logged successfully");
-      } else {
-        console.error("Creation failed:", response.data);
-        alert("Failed to create contact. Please try again.");
       }
     } catch (error) {
-      console.error("Error creating contact:", error);
-      alert("An error occurred while creating the contact.");
+      console.error("Error deleting contact:", error);
     }
   };
 
+  // Handle modal form submission
   const handleModalSubmit = (
     contactData: Omit<Contact, "_id">,
     isEdit?: boolean
   ) => {
-    console.log("Modal submit - contactData:", contactData);
-    console.log("Modal submit - isEdit:", isEdit);
-
     if (isEdit) {
       handleUpdateContact(contactData);
     } else {
       handleCreateContact(contactData);
-    }
-  };
-
-  const handleDeleteContact = async (contactId: string) => {
-    try {
-      const response = await axios.delete(`/api/contacts?id=${contactId}`);
-      console.log(response.data);
-      if ((response.data as ContactResponse).success) {
-        setRefreshTrigger((prev) => prev + 1);
-      }
-      await axios.post("/api/activities", {
-        action: "contact_deleted",
-        entityType: "contact",
-        entityId: contactId,
-        entityName: "Deleted Contact",
-      });
-    } catch (error) {
-      console.error("Error deleting contact:", error);
     }
   };
 
@@ -632,27 +244,109 @@ const ContactsPage = () => {
     setIsEditing(false);
   };
 
-  useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        const contactsData = await axios.get("/api/contacts");
-        console.log(contactsData.data);
+  // STEP 6: BULK ACTIONS (Select multiple contacts and perform actions)
 
-        // Handle both response formats
-        const responseData = contactsData.data as ContactsResponse;
-        if (responseData.success) {
-          setContacts(responseData.contacts);
-        } else {
-          // Fallback for array response
-          setContacts(contactsData.data as Contact[]);
+  // Select or unselect all contacts on current page
+  const handleSelectAll = () => {
+    if (selectedContacts.length === contacts.length) {
+      // If all are selected, unselect all
+      setSelectedContacts([]);
+    } else {
+      // If not all are selected, select all
+      setSelectedContacts(contacts.map((contact) => contact._id));
+    }
+  };
+
+  // Delete multiple selected contacts
+  const handleBulkDelete = async () => {
+    if (selectedContacts.length === 0) return;
+
+    // Ask for confirmation before deleting
+    if (
+      window.confirm(
+        `Are you sure you want to delete ${selectedContacts.length} contact(s)?`
+      )
+    ) {
+      try {
+        // Delete each selected contact
+        await Promise.all(
+          selectedContacts.map((contactId) =>
+            axios.delete(`/api/contacts?id=${contactId}`)
+          )
+        );
+
+        // Log bulk delete activity for audit trail
+        await axios.post("/api/activities", {
+          action: "bulk_contacts_deleted",
+          entityType: "contact",
+          entityId: "bulk",
+          entityName: `${selectedContacts.length} contacts`,
+        });
+
+        // Clear selection and refresh list
+        setSelectedContacts([]);
+        setRefreshTrigger((prev) => prev + 1);
+      } catch (error) {
+        console.error("Error deleting contacts:", error);
+        alert("Error deleting some contacts. Please try again.");
+      }
+    }
+  };
+
+  // Add a tag to multiple selected contacts
+  const handleBulkAddTag = async (tagName: string) => {
+    if (selectedContacts.length === 0) return;
+
+    try {
+      // Add tag to each selected contact (if they don't already have it)
+      await Promise.all(
+        selectedContacts.map(async (contactId) => {
+          const contact = contacts.find((c) => c._id === contactId);
+          if (contact && !contact.tags.includes(tagName)) {
+            const updatedTags = [...contact.tags, tagName];
+            return axios.put(`/api/contacts?contactId=${contactId}`, {
+              ...contact,
+              tags: updatedTags,
+              updatedAt: new Date(),
+            });
+          }
+        })
+      );
+
+      // Log bulk tag addition activity
+      await axios.post("/api/activities", {
+        action: "bulk_tag_added",
+        entityType: "contact",
+        entityId: "bulk",
+        entityName: `Tag "${tagName}" added to ${selectedContacts.length} contacts`,
+      });
+
+      // Clear selection and refresh list
+      setSelectedContacts([]);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (error) {
+      console.error("Error adding tags:", error);
+      alert("Error adding tag to some contacts. Please try again.");
+    }
+  };
+
+  // STEP 7: LOAD AVAILABLE TAGS (For displaying tag colors)
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await axios.get("/api/tags");
+        const tagsData = response.data as { success: boolean; tags: Tag[] };
+        if (tagsData.success) {
+          setAvailableTags(tagsData.tags);
         }
       } catch (error) {
-        console.error("Error fetching contacts:", error);
+        console.error("Error fetching tags:", error);
       }
     };
-    fetchContacts();
-  }, [refreshTrigger]);
+    fetchTags();
+  }, []);
 
+  // STEP 8: RENDER THE CONTACTS PAGE
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -677,6 +371,7 @@ const ContactsPage = () => {
             </svg>
             <span>Import CSV</span>
           </button>
+
           <button
             onClick={openCreateModal}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center space-x-2"
@@ -699,10 +394,174 @@ const ContactsPage = () => {
         </div>
       </div>
 
+      {/* SEARCH AND FILTER CONTROLS */}
+      <div className="bg-white shadow rounded-lg mb-6 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Search Input - searches name, email, company, phone */}
+          <div>
+            <label
+              htmlFor="search"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Search Contacts
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                id="search"
+                placeholder="Search by name, email, company, or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Tag Filter Dropdown - filters by specific tag */}
+          <div>
+            <label
+              htmlFor="tagFilter"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Filter by Tag
+            </label>
+            <select
+              id="tagFilter"
+              value={selectedTagFilter}
+              onChange={(e) => setSelectedTagFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Tags</option>
+              {availableTags.map((tag) => (
+                <option key={tag._id} value={tag.tagName}>
+                  {tag.tagName}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Clear Filters Button - shows only when filters are active */}
+        {(searchTerm || selectedTagFilter) && (
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                setSearchTerm("");
+                setSelectedTagFilter("");
+              }}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Clear all filters
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedContacts.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-blue-800 font-medium">
+              {selectedContacts.length} contact(s) selected
+            </span>
+            <div className="flex items-center space-x-3">
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleBulkAddTag(e.target.value);
+                    e.target.value = "";
+                  }
+                }}
+                className="text-sm px-3 py-1 border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                defaultValue=""
+                title="Add tag to selected contacts"
+              >
+                <option value="" disabled>
+                  Add Tag
+                </option>
+                {availableTags.map((tag) => (
+                  <option key={tag._id} value={tag.tagName}>
+                    {tag.tagName}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={handleBulkDelete}
+                className="text-sm px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500"
+              >
+                Delete Selected
+              </button>
+
+              <button
+                onClick={() => setSelectedContacts([])}
+                className="text-sm px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Results Summary */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            Showing {contacts.length} of {totalCount} contacts
+            {searchTerm && ` matching "${searchTerm}"`}
+            {selectedTagFilter && ` with tag "${selectedTagFilter}"`}
+            {loading && " (loading...)"}
+          </p>
+
+          {/* Select All Checkbox */}
+          {contacts.length > 0 && (
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="selectAll"
+                checked={
+                  selectedContacts.length === contacts.length &&
+                  contacts.length > 0
+                }
+                onChange={handleSelectAll}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="selectAll" className="text-sm text-gray-600">
+                Select All ({contacts.length})
+              </label>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Contacts List */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Recent Contacts</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium text-gray-900">
+              Recent Contacts
+            </h3>
+            <div className="text-sm text-gray-500">
+              {contacts.length} contact{contacts.length !== 1 ? "s" : ""}
+              (Page {currentPage} of {totalPages}, {totalCount} total)
+            </div>
+          </div>
         </div>
         <div className="p-6">
           {contacts.length === 0 ? (
@@ -721,88 +580,35 @@ const ContactsPage = () => {
                 />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">
-                No contacts
+                {contacts.length === 0 ? "No contacts" : "No matching contacts"}
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                Get started by creating a new contact.
+                {contacts.length === 0
+                  ? "Get started by creating a new contact."
+                  : "Try adjusting your search or filter criteria."}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               {contacts.map((contact, index) => (
-                <div
+                <ContactCard
                   key={contact._id || index}
-                  className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg"
-                >
-                  <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
-                      <span className="text-sm font-medium text-white">
-                        {contact.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {contact.name}
-                    </p>
-                    <p className="text-sm text-gray-500 truncate">
-                      {contact.email}
-                    </p>
-                    {contact.company && (
-                      <p className="text-sm text-gray-500 truncate">
-                        {contact.company}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex-shrink-0 flex items-center space-x-4">
-                    {contact.phone && (
-                      <p className="text-sm text-gray-500">{contact.phone}</p>
-                    )}
-                    <div className="flex items-center space-x-2">
-                      {/* Edit Icon */}
-                      <button
-                        className="text-gray-400 hover:text-blue-600 transition-colors duration-200"
-                        title="Edit contact"
-                        onClick={() => openEditModal(contact)}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* Delete Icon */}
-                      <button
-                        className="text-gray-400 hover:text-red-600 transition-colors duration-200"
-                        title="Delete contact"
-                        onClick={() => handleDeleteContact(contact._id)}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                  contact={contact}
+                  index={index}
+                  selectedContacts={selectedContacts}
+                  availableTags={availableTags}
+                  onSelectContact={(contactId, isSelected) => {
+                    if (isSelected) {
+                      setSelectedContacts([...selectedContacts, contactId]);
+                    } else {
+                      setSelectedContacts(
+                        selectedContacts.filter((id) => id !== contactId)
+                      );
+                    }
+                  }}
+                  onEditContact={openEditModal}
+                  onDeleteContact={handleDeleteContact}
+                />
               ))}
             </div>
           )}
@@ -817,6 +623,33 @@ const ContactsPage = () => {
         editingContact={editingContact}
         isEditing={isEditing}
       />
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="mt-8 flex justify-center items-center gap-4">
+          <button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-600"
+          >
+            Previous
+          </button>
+
+          <span className="text-gray-600">
+            Page {currentPage} of {totalPages} (Total: {totalCount} contacts)
+          </span>
+
+          <button
+            onClick={() =>
+              setCurrentPage(Math.min(totalPages, currentPage + 1))
+            }
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-600"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* CSV Uploader */}
       {showCSVUploader && (

@@ -1,15 +1,22 @@
 import { MongoConnect } from "@/DB/MongoConnect";
 import { TagsModel } from "@/DB/MongoSchema";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 export const POST = async (req: Request) => {
   try {
     await MongoConnect();
     const body = await req.json();
+
+    // Get user ID from headers (you'll need to implement auth middleware)
+    const headersList = headers();
+    const userId = headersList.get("user-id") || "placeholder-user-id"; // Temporary placeholder
+
     const response = await TagsModel.create({
       tagName: body.tagName,
       color: body.color,
       usageCount: body.usageCount || 0,
+      createdBy: userId !== "placeholder-user-id" ? userId : undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -35,7 +42,24 @@ export const POST = async (req: Request) => {
 export const GET = async () => {
   try {
     await MongoConnect();
-    const tags = await TagsModel.find({}).sort({ createdAt: -1 });
+
+    // First try with population, fallback to basic query if it fails
+    let tags;
+    try {
+      tags = await TagsModel.find({})
+        .populate({
+          path: "createdBy",
+          select: "name email",
+          options: { strictPopulate: false },
+        })
+        .sort({ createdAt: -1 });
+    } catch (populateError) {
+      console.warn(
+        "Population failed, falling back to basic query:",
+        populateError
+      );
+      tags = await TagsModel.find({}).sort({ createdAt: -1 });
+    }
 
     return NextResponse.json({
       success: true,

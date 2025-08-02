@@ -3,10 +3,12 @@ const Schema = mongoose.Schema;
 const ObjectId = Schema.ObjectId;
 
 const UserSchema = new Schema({
-  _id: { type: String, required: true },
-  name: String,
-  email: String,
-  password: String,
+  _id: { type: ObjectId, auto: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 
 const contactSchema = new Schema({
@@ -14,34 +16,36 @@ const contactSchema = new Schema({
   email: { type: String, required: true, unique: true },
   phone: String,
   company: String,
-  tags: [{ type: String, ref: "Tag" }],
+  tags: [{ type: ObjectId, ref: "Tag" }],
   notes: String,
-  createdBy: { type: ObjectId, ref: "User" },
-  createdAt: Date,
-  updatedAt: Date,
-  lastInteraction: Date,
+  createdBy: { type: ObjectId, ref: "User" }, // Made optional for backward compatibility
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  lastInteraction: { type: Date, default: Date.now },
 });
 
 const tagsSchema = new Schema({
-  tagName: { type: String, required: true },
+  tagName: { type: String, required: true, unique: true },
   color: { type: String, required: true, default: "#3B82F6" },
   usageCount: { type: Number, default: 0 },
+  createdBy: { type: ObjectId, ref: "User" }, // Made optional for backward compatibility
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
 const ActivitySchema = new Schema({
-  user: { type: String, required: true },
-  action: String,
-  entityType: String,
-  entityId: ObjectId,
-  entityName: String,
+  user: { type: ObjectId, ref: "User" }, // Made optional for backward compatibility
+  action: { type: String, required: true },
+  entityType: { type: String, required: true },
+  entityId: { type: ObjectId, required: true },
+  entityName: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
-})
+});
 
 const UserModel = mongoose.models.User || mongoose.model("User", UserSchema);
 const ContactsModel =
   mongoose.models.Contact || mongoose.model("Contact", contactSchema);
 const TagsModel = mongoose.models.Tag || mongoose.model("Tag", tagsSchema);
-const ActivityModel = mongoose.models.Activity || mongoose.model("Activity", ActivitySchema);
+const ActivityModel =
+  mongoose.models.Activity || mongoose.model("Activity", ActivitySchema);
 export { UserModel, ContactsModel, TagsModel, ActivityModel };
