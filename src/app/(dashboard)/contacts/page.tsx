@@ -23,6 +23,14 @@ interface Contact extends Omit<ContactFormData, "tags"> {
   lastInteraction: Date;
 }
 
+// Tag interface
+interface Tag {
+  _id: string;
+  tagName: string;
+  color: string;
+  usageCount: number;
+}
+
 // API Response interfaces for type safety
 interface ContactResponse {
   success: boolean;
@@ -58,6 +66,24 @@ const ContactModal = ({
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+
+  // Click outside handler for tag dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showTagDropdown && !target.closest(".tag-dropdown-container")) {
+        setShowTagDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showTagDropdown]);
 
   // ✅ Pre-fill form when editing
   useEffect(() => {
@@ -70,6 +96,7 @@ const ContactModal = ({
         tags: editingContact.tags.join(", "),
         notes: editingContact.notes || "",
       });
+      setSelectedTags(editingContact.tags || []);
     } else {
       // Reset form for new contact
       setFormData({
@@ -80,9 +107,29 @@ const ContactModal = ({
         tags: "",
         notes: "",
       });
+      setSelectedTags([]);
     }
     setErrors({});
   }, [isEditing, editingContact, isOpen]);
+
+  // Fetch available tags
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await axios.get("/api/tags");
+        const tagsData = response.data as { success: boolean; tags: Tag[] };
+        if (tagsData.success) {
+          setAvailableTags(tagsData.tags);
+        }
+      } catch (error) {
+        console.error("Error fetching tags:", error);
+      }
+    };
+
+    if (isOpen) {
+      fetchTags();
+    }
+  }, [isOpen]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -92,6 +139,16 @@ const ContactModal = ({
       ...prev,
       [name]: value,
     }));
+
+    // Update selectedTags when tags input changes manually
+    if (name === "tags") {
+      const tagArray = value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag);
+      setSelectedTags(tagArray);
+    }
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({
@@ -99,6 +156,27 @@ const ContactModal = ({
         [name]: "",
       }));
     }
+  };
+
+  const handleTagSelect = (tagName: string) => {
+    if (!selectedTags.includes(tagName)) {
+      const newSelectedTags = [...selectedTags, tagName];
+      setSelectedTags(newSelectedTags);
+      setFormData((prev) => ({
+        ...prev,
+        tags: newSelectedTags.join(", "),
+      }));
+    }
+    setShowTagDropdown(false);
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    const newSelectedTags = selectedTags.filter((tag) => tag !== tagToRemove);
+    setSelectedTags(newSelectedTags);
+    setFormData((prev) => ({
+      ...prev,
+      tags: newSelectedTags.join(", "),
+    }));
   };
 
   const validateForm = () => {
@@ -270,24 +348,113 @@ const ContactModal = ({
             </div>
 
             {/* Tags */}
-            <div>
+            <div className="relative tag-dropdown-container">
               <label
                 htmlFor="tags"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
                 Tags
               </label>
+
+              {/* Selected Tags Display */}
+              <div className="mb-2">
+                {selectedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Tag Selection Dropdown */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTagDropdown(!showTagDropdown)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center"
+                >
+                  <span className="text-gray-500">
+                    {selectedTags.length > 0
+                      ? `${selectedTags.length} tag(s) selected`
+                      : "Select tags..."}
+                  </span>
+                  <svg
+                    className={`w-5 h-5 text-gray-400 transition-transform ${
+                      showTagDropdown ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                {/* Dropdown Options */}
+                {showTagDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {availableTags.length > 0 ? (
+                      availableTags.map((tag) => (
+                        <button
+                          key={tag._id}
+                          type="button"
+                          onClick={() => handleTagSelect(tag.tagName)}
+                          disabled={selectedTags.includes(tag.tagName)}
+                          className={`w-full px-3 py-2 text-left hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            selectedTags.includes(tag.tagName)
+                              ? "bg-blue-50 text-blue-700"
+                              : "text-gray-900"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{tag.tagName}</span>
+                            <div
+                              className="w-3 h-3 rounded-full border border-gray-200"
+                              title={`Color: ${tag.color}`}
+                            />
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-gray-500 text-sm">
+                        No tags available. Create some tags first.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Manual Tag Input */}
               <input
                 type="text"
                 id="tags"
                 name="tags"
                 value={formData.tags}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter tags separated by commas"
+                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Or enter tags manually (comma-separated)"
               />
               <p className="mt-1 text-xs text-gray-500">
-                Separate multiple tags with commas
+                Select from dropdown above or enter tags manually separated by
+                commas
               </p>
             </div>
 
@@ -404,7 +571,7 @@ const ContactsPage = () => {
           entityId: responseData.contact._id,
           entityName: responseData.contact.name,
         });
-        console.log("New activity logged:", newActivity.data);
+        console.log("New activity logged successfully");
       } else {
         console.error("Creation failed:", response.data);
         alert("Failed to create contact. Please try again.");
@@ -440,7 +607,7 @@ const ContactsPage = () => {
         action: "contact_deleted",
         entityType: "contact",
         entityId: contactId,
-        entityName: response.data.contact.name,
+        entityName: "Deleted Contact",
       });
     } catch (error) {
       console.error("Error deleting contact:", error);
