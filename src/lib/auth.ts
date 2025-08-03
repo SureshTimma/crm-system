@@ -12,21 +12,21 @@ export interface AuthenticatedUser {
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   try {
     await MongoConnect();
-    
+
     const cookieStore = await cookies();
     const firebaseUid = cookieStore.get("userId")?.value;
-    
+
     if (!firebaseUid) {
       return null;
     }
-    
+
     // Find user by Firebase UID to get MongoDB ObjectId
     const user = await UserModel.findOne({ firebaseUid }).lean();
-    
+
     if (!user) {
       return null;
     }
-    
+
     return {
       _id: user._id.toString(),
       firebaseUid: user.firebaseUid,
@@ -41,10 +41,10 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
 
 export async function requireAuth(): Promise<AuthenticatedUser> {
   const user = await getCurrentUser();
-  
+
   if (!user) {
     throw new Error("Authentication required");
   }
-  
+
   return user;
 }

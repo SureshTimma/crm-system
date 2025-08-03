@@ -42,11 +42,11 @@ interface DashboardResponse {
 export const GET = async () => {
   try {
     console.log("🚀 DASHBOARD API: Starting user-specific request");
-    
+
     // Get authenticated user
     const user = await requireAuth();
     const userObjectId = new mongoose.Types.ObjectId(user._id);
-    
+
     await MongoConnect();
 
     // Calculate fixed date ranges (no dynamic filtering)
@@ -54,7 +54,10 @@ export const GET = async () => {
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    console.log("📊 DASHBOARD API: Running user-specific aggregation queries for user:", user._id);
+    console.log(
+      "📊 DASHBOARD API: Running user-specific aggregation queries for user:",
+      user._id
+    );
 
     // 1. Get Summary Statistics (user-specific)
     const [totalContacts, newContactsThisWeek, totalActivities, activeTags] =

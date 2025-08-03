@@ -145,8 +145,8 @@ const ContactsPage = () => {
 
         // Log activity for audit trail
         await axios.post("/api/activities", {
-          action: "contact_created",
-          entityType: "contact",
+          action: "CREATE",
+          entityType: "CONTACT",
           entityId: data.contact._id,
           entityName: data.contact.name,
         });
@@ -182,8 +182,8 @@ const ContactsPage = () => {
 
         // Log activity
         await axios.post("/api/activities", {
-          action: "contact_updated",
-          entityType: "contact",
+          action: "UPDATE",
+          entityType: "CONTACT",
           entityId: editingContact._id,
           entityName: contactData.name,
         });
@@ -197,6 +197,10 @@ const ContactsPage = () => {
   // Delete single contact
   const handleDeleteContact = async (contactId: string) => {
     try {
+      // Get the contact name before deleting
+      const contactToDelete = contacts.find((c) => c._id === contactId);
+      const contactName = contactToDelete?.name || "Unknown Contact";
+
       const response = await axios.delete(`/api/contacts?id=${contactId}`);
       const data = response.data as ContactResponse;
 
@@ -205,10 +209,10 @@ const ContactsPage = () => {
 
         // Log activity
         await axios.post("/api/activities", {
-          action: "contact_deleted",
-          entityType: "contact",
+          action: "DELETE",
+          entityType: "CONTACT",
           entityId: contactId,
-          entityName: "Deleted Contact",
+          entityName: contactName,
         });
       }
     } catch (error) {
@@ -279,8 +283,8 @@ const ContactsPage = () => {
 
         // Log bulk delete activity for audit trail
         await axios.post("/api/activities", {
-          action: "bulk_contacts_deleted",
-          entityType: "contact",
+          action: "DELETE",
+          entityType: "CONTACT",
           entityId: "bulk",
           entityName: `${selectedContacts.length} contacts`,
         });
@@ -324,8 +328,8 @@ const ContactsPage = () => {
 
       // Log bulk tag addition activity
       await axios.post("/api/activities", {
-        action: "bulk_tag_added",
-        entityType: "contact",
+        action: "UPDATE",
+        entityType: "CONTACT",
         entityId: "bulk",
         entityName: `Tag "${tagName}" added to ${selectedContacts.length} contacts`,
       });

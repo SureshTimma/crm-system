@@ -25,23 +25,26 @@ interface SortObject {
 await MongoConnect();
 
 // Helper function to safely get tag ObjectIds from tag names
-async function getTagObjectIds(tagNames: string[], userObjectId: mongoose.Types.ObjectId) {
+async function getTagObjectIds(
+  tagNames: string[],
+  userObjectId: mongoose.Types.ObjectId
+) {
   if (!tagNames || tagNames.length === 0) return [];
 
   try {
     const tagIds = [];
     for (const tagName of tagNames) {
       // Look for existing tag first (user-specific)
-      let tag = await TagsModel.findOne({ 
-        tagName, 
-        createdBy: userObjectId 
+      let tag = await TagsModel.findOne({
+        tagName,
+        createdBy: userObjectId,
       });
-      
+
       // If tag doesn't exist, create it
       if (!tag) {
         tag = await TagsModel.create({
           tagName,
-          color: "#" + Math.floor(Math.random()*16777215).toString(16), // Random color
+          color: "#" + Math.floor(Math.random() * 16777215).toString(16), // Random color
           usageCount: 1,
           createdBy: userObjectId,
           createdAt: new Date(),
@@ -53,7 +56,7 @@ async function getTagObjectIds(tagNames: string[], userObjectId: mongoose.Types.
           $inc: { usageCount: 1 },
         });
       }
-      
+
       tagIds.push(tag._id);
     }
     return tagIds;
@@ -202,9 +205,9 @@ export const GET = async (req: Request) => {
     // Tag filter - need to get tag ObjectId first (user-specific)
     if (tagFilter) {
       try {
-        const tagDoc = await TagsModel.findOne({ 
-          tagName: tagFilter, 
-          createdBy: userObjectId 
+        const tagDoc = await TagsModel.findOne({
+          tagName: tagFilter,
+          createdBy: userObjectId,
         });
         if (tagDoc) {
           filter.tags = { $in: [tagDoc._id] };
@@ -265,10 +268,11 @@ export const GET = async (req: Request) => {
 
     // Get unique companies for filter dropdown (user-specific)
     const companiesAggregation = await ContactsModel.aggregate([
-      { $match: { 
+      {
+        $match: {
           createdBy: userObjectId,
-          company: { $exists: true, $nin: [null, ""] } 
-        } 
+          company: { $exists: true, $nin: [null, ""] },
+        },
       },
       { $group: { _id: "$company" } },
       { $sort: { _id: 1 } },
@@ -276,7 +280,9 @@ export const GET = async (req: Request) => {
     const uniqueCompanies = companiesAggregation.map((item) => item._id);
 
     // Get all available tags for the frontend (user-specific)
-    const availableTags = await TagsModel.find({ createdBy: userObjectId }).sort({ tagName: 1 }).lean();
+    const availableTags = await TagsModel.find({ createdBy: userObjectId })
+      .sort({ tagName: 1 })
+      .lean();
 
     return NextResponse.json({
       success: true,
@@ -324,9 +330,9 @@ export const DELETE = async (req: Request) => {
     }
 
     // Get the contact first to update tag usage counts and verify ownership
-    const contact = await ContactsModel.findOne({ 
-      _id, 
-      createdBy: userObjectId 
+    const contact = await ContactsModel.findOne({
+      _id,
+      createdBy: userObjectId,
     }).populate("tags");
 
     if (!contact) {
@@ -340,19 +346,20 @@ export const DELETE = async (req: Request) => {
     }
 
     if (contact.tags) {
-      // Decrease usage count for each tag
+      // Decrease usage count for each tag (user-specific)
       for (const tag of contact.tags) {
-        await TagsModel.findByIdAndUpdate(tag._id, {
-          $inc: { usageCount: -1 },
-        });
+        await TagsModel.findOneAndUpdate(
+          { _id: tag._id, createdBy: userObjectId },
+          { $inc: { usageCount: -1 } }
+        );
       }
     }
 
-    const response = await ContactsModel.deleteOne({ 
-      _id, 
-      createdBy: userObjectId 
+    const response = await ContactsModel.deleteOne({
+      _id,
+      createdBy: userObjectId,
     });
-    
+
     return NextResponse.json({
       success: true,
       message: "Contact deleted successfully",
@@ -394,9 +401,9 @@ export const PUT = async (req: Request) => {
     console.log("Update data received:", body);
 
     // Get the existing contact to compare tags and verify ownership
-    const existingContact = await ContactsModel.findOne({ 
-      _id, 
-      createdBy: userObjectId 
+    const existingContact = await ContactsModel.findOne({
+      _id,
+      createdBy: userObjectId,
     }).populate("tags");
 
     if (!existingContact) {

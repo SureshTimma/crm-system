@@ -60,7 +60,9 @@ export const GET = async () => {
         "Population failed, falling back to basic query:",
         populateError
       );
-      tags = await TagsModel.find({ createdBy: userObjectId }).sort({ createdAt: -1 });
+      tags = await TagsModel.find({ createdBy: userObjectId }).sort({
+        createdAt: -1,
+      });
     }
 
     return NextResponse.json({
@@ -89,7 +91,7 @@ export const PUT = async (req: Request) => {
     const body = await req.json();
     const url = new URL(req.url);
     const tagId = url.searchParams.get("tagId");
-    
+
     const updatedTag = await TagsModel.findOneAndUpdate(
       { _id: tagId, createdBy: userObjectId },
       {
@@ -135,10 +137,10 @@ export const DELETE = async (req: Request) => {
 
     const url = new URL(req.url);
     const tagId = url.searchParams.get("id");
-    
-    const deletedTag = await TagsModel.findOneAndDelete({ 
-      _id: tagId, 
-      createdBy: userObjectId 
+
+    const deletedTag = await TagsModel.findOneAndDelete({
+      _id: tagId,
+      createdBy: userObjectId,
     });
 
     if (!deletedTag) {
