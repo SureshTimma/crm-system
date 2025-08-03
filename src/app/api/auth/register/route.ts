@@ -12,9 +12,10 @@ export const POST = async (req: Request) => {
     console.log("Received data:", { uid, name, email, password });
 
     const MongoUser = await UserModel.create({
-      _id: uid,
+      firebaseUid: uid, // Store Firebase UID in separate field
       name,
-      email
+      email,
+      password: password || "firebase-auth", // Default since using Firebase auth
     });
     console.log("User saved to MongoDB:", MongoUser);
 

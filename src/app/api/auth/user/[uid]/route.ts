@@ -4,21 +4,22 @@ import { UserModel } from "@/DB/MongoSchema";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { uid: string } }
+  { params }: { params: Promise<{ uid: string }> }
 ) {
   try {
     await MongoConnect();
 
-    const { uid } = params;
+    const { uid } = await params;
 
     if (!uid) {
       return NextResponse.json(
-        { error: "User ID is required" },
+        { error: "Firebase UID is required" },
         { status: 400 }
       );
     }
 
-    const user = await UserModel.findById(uid).lean();
+    // Find user by Firebase UID
+    const user = await UserModel.findOne({ firebaseUid: uid }).lean();
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -26,7 +27,8 @@ export async function GET(
 
     // Return user data without sensitive information
     const userData = {
-      uid: user._id,
+      _id: user._id.toString(),
+      firebaseUid: user.firebaseUid,
       name: user.name,
       email: user.email,
     };

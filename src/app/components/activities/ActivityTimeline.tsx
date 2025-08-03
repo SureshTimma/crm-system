@@ -1,8 +1,14 @@
 import React from "react";
 
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+}
+
 interface Activity {
   _id: string;
-  user: string;
+  user: User;
   action: "CREATE" | "UPDATE" | "DELETE" | "VIEW";
   entityType: "CONTACT" | "TAG" | "USER";
   entityId: string;
@@ -107,7 +113,7 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       "bg-pink-100 text-pink-600",
       "bg-indigo-100 text-indigo-600",
     ];
-    const colorIndex = activity.user.length % colors.length;
+    const colorIndex = activity.user.name.length % colors.length;
     const colorClass = colors[colorIndex];
 
     return (
@@ -115,7 +121,7 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
         className={`flex items-center justify-center w-10 h-10 rounded-full ${colorClass} ring-2 ring-white shadow-sm`}
       >
         <span className="text-sm font-bold">
-          {activity.user.slice(0, 2).toUpperCase()}
+          {activity.user.name.slice(0, 2).toUpperCase()}
         </span>
       </div>
     );

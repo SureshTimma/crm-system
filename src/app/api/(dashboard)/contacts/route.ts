@@ -1,5 +1,5 @@
 import { MongoConnect } from "@/DB/MongoConnect";
-import { ContactsModel, TagsModel } from "@/DB/MongoSchema";
+import { ContactsModel, TagsModel, UserModel } from "@/DB/MongoSchema";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
@@ -63,9 +63,24 @@ export const POST = async (req: Request) => {
   try {
     const body = await req.json();
 
-    // Get user ID from headers (you'll need to implement auth middleware)
+    // Get Firebase UID from headers and find MongoDB ObjectId
     const headersList = headers();
-    const userId = headersList.get("user-id") || "placeholder-user-id"; // Temporary placeholder
+    const firebaseUid = headersList.get("user-id") || "placeholder-user-id"; // Temporary placeholder
+
+    let userObjectId = null;
+    if (firebaseUid !== "placeholder-user-id") {
+      try {
+        const userDoc = await UserModel.findOne({ firebaseUid }).lean();
+        if (userDoc) {
+          userObjectId = userDoc._id;
+        }
+      } catch (error) {
+        console.warn(
+          `Error finding user for Firebase UID ${firebaseUid}:`,
+          error
+        );
+      }
+    }
 
     // Handle tag creation/updating
     if (body.tags && body.tags.length > 0) {
@@ -76,7 +91,7 @@ export const POST = async (req: Request) => {
             $inc: { usageCount: 1 },
             $setOnInsert: {
               color: "#3B82F6",
-              createdBy: userId !== "placeholder-user-id" ? userId : undefined,
+              createdBy: userObjectId,
               createdAt: new Date(),
             },
             updatedAt: new Date(),
@@ -92,7 +107,7 @@ export const POST = async (req: Request) => {
     const newContact = await ContactsModel.create({
       ...body,
       tags: tagIds,
-      createdBy: userId !== "placeholder-user-id" ? userId : undefined,
+      createdBy: userObjectId,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastInteraction: new Date(),
@@ -325,9 +340,24 @@ export const PUT = async (req: Request) => {
       );
     }
 
-    // Get user ID from headers
+    // Get Firebase UID from headers and find MongoDB ObjectId
     const headersList = headers();
-    const userId = headersList.get("user-id") || "placeholder-user-id";
+    const firebaseUid = headersList.get("user-id") || "placeholder-user-id";
+
+    let userObjectId = null;
+    if (firebaseUid !== "placeholder-user-id") {
+      try {
+        const userDoc = await UserModel.findOne({ firebaseUid }).lean();
+        if (userDoc) {
+          userObjectId = userDoc._id;
+        }
+      } catch (error) {
+        console.warn(
+          `Error finding user for Firebase UID ${firebaseUid}:`,
+          error
+        );
+      }
+    }
 
     console.log("Updating contact with ID:", _id);
     console.log("Update data received:", body);
@@ -362,9 +392,7 @@ export const PUT = async (req: Request) => {
             $inc: { usageCount: 1 },
             $setOnInsert: {
               color: "#3B82F6",
-              createdBy:
-                existingContact?.createdBy ||
-                (userId !== "placeholder-user-id" ? userId : undefined),
+              createdBy: existingContact?.createdBy || userObjectId,
               createdAt: new Date(),
             },
             updatedAt: new Date(),
