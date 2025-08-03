@@ -18,7 +18,7 @@ interface ContactFormData {
 
 interface Contact extends Omit<ContactFormData, "tags"> {
   _id: string;
-  tags: string[];
+  tags: (string | Tag)[]; // Can be strings or full tag objects
   createdAt: Date;
   updatedAt: Date;
   lastInteraction: Date;
@@ -98,6 +98,7 @@ const ContactsPage = () => {
         const data = response.data as {
           success: boolean;
           contacts: Contact[];
+          availableTags: Tag[]; // Tags are now included in contacts response
           pagination: {
             currentPage: number;
             totalPages: number;
@@ -107,6 +108,7 @@ const ContactsPage = () => {
 
         if (data.success) {
           setContacts(data.contacts);
+          setAvailableTags(data.availableTags); // Set tags from contacts response
           setCurrentPage(data.pagination.currentPage);
           setTotalPages(data.pagination.totalPages);
           setTotalCount(data.pagination.totalCount);
@@ -302,13 +304,20 @@ const ContactsPage = () => {
       await Promise.all(
         selectedContacts.map(async (contactId) => {
           const contact = contacts.find((c) => c._id === contactId);
-          if (contact && !contact.tags.includes(tagName)) {
-            const updatedTags = [...contact.tags, tagName];
-            return axios.put(`/api/contacts?contactId=${contactId}`, {
-              ...contact,
-              tags: updatedTags,
-              updatedAt: new Date(),
-            });
+          if (contact) {
+            // Convert mixed tags to string array for comparison
+            const existingTagNames = contact.tags.map((tag) =>
+              typeof tag === "string" ? tag : tag.tagName
+            );
+
+            if (!existingTagNames.includes(tagName)) {
+              const updatedTags = [...existingTagNames, tagName];
+              return axios.put(`/api/contacts?contactId=${contactId}`, {
+                ...contact,
+                tags: updatedTags,
+                updatedAt: new Date(),
+              });
+            }
           }
         })
       );
@@ -330,23 +339,7 @@ const ContactsPage = () => {
     }
   };
 
-  // STEP 7: LOAD AVAILABLE TAGS (For displaying tag colors)
-  useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        const response = await axios.get("/api/tags");
-        const tagsData = response.data as { success: boolean; tags: Tag[] };
-        if (tagsData.success) {
-          setAvailableTags(tagsData.tags);
-        }
-      } catch (error) {
-        console.error("Error fetching tags:", error);
-      }
-    };
-    fetchTags();
-  }, []);
-
-  // STEP 8: RENDER THE CONTACTS PAGE
+  // STEP 7: RENDER THE CONTACTS PAGE (Tags are now fetched with contacts)
   return (
     <div>
       <div className="flex justify-between items-center mb-6">

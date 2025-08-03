@@ -15,7 +15,7 @@ interface ContactFormData {
 
 interface Contact extends Omit<ContactFormData, "tags"> {
   _id: string;
-  tags: string[];
+  tags: (string | Tag)[]; // Can be strings or full tag objects
   createdAt: Date;
   updatedAt: Date;
   lastInteraction: Date;
@@ -76,15 +76,20 @@ const ContactModal: React.FC<ContactModalProps> = ({
   // STEP 3: PRE-FILL FORM WHEN EDITING EXISTING CONTACT
   useEffect(() => {
     if (isEditing && editingContact) {
+      // Convert mixed tag format to string array for form
+      const tagStrings = editingContact.tags.map((tag) =>
+        typeof tag === "string" ? tag : tag.tagName
+      );
+
       setFormData({
         name: editingContact.name,
         email: editingContact.email,
         phone: editingContact.phone || "",
         company: editingContact.company || "",
-        tags: editingContact.tags.join(", "),
+        tags: tagStrings.join(", "),
         notes: editingContact.notes || "",
       });
-      setSelectedTags(editingContact.tags || []);
+      setSelectedTags(tagStrings);
     } else {
       // Reset form for new contact
       setFormData({

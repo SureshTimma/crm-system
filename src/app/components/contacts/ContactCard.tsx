@@ -9,7 +9,7 @@ interface Contact {
   email: string;
   phone: string;
   company: string;
-  tags: string[];
+  tags: (string | Tag)[]; // Can be strings or full tag objects
   notes: string;
   createdAt: Date;
   updatedAt: Date;
@@ -97,12 +97,10 @@ const ContactCard: React.FC<ContactCardProps> = ({
             <p className="text-lg font-medium text-gray-900 truncate">
               {contact.name}
             </p>
-            
+
             {/* Contact Email */}
-            <p className="text-sm text-gray-600 truncate">
-              {contact.email}
-            </p>
-            
+            <p className="text-sm text-gray-600 truncate">{contact.email}</p>
+
             {/* Company (if available) */}
             {contact.company && (
               <p className="text-sm font-medium text-gray-700 mt-1">
@@ -119,12 +117,25 @@ const ContactCard: React.FC<ContactCardProps> = ({
             {/* Tags Display */}
             {contact.tags && contact.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
-                {contact.tags.map((tagName, tagIndex) => {
-                  const tag = availableTags.find(
-                    (t) => t.tagName === tagName
-                  );
-                  const color = tag?.color || "#6B7280";
-                  const colorClass = getTagColorClass(color);
+                {contact.tags.map((tag, tagIndex) => {
+                  // Handle both string tags and Tag objects
+                  let tagName: string;
+                  let tagColor: string;
+
+                  if (typeof tag === "string") {
+                    // If it's a string, try to find the tag object in availableTags
+                    tagName = tag;
+                    const foundTag = availableTags.find(
+                      (t) => t.tagName === tag
+                    );
+                    tagColor = foundTag?.color || "#6B7280";
+                  } else {
+                    // If it's already a Tag object, use its properties
+                    tagName = tag.tagName;
+                    tagColor = tag.color || "#6B7280";
+                  }
+
+                  const colorClass = getTagColorClass(tagColor);
 
                   return (
                     <span

@@ -10,20 +10,6 @@ interface PopulatedTag {
   color: string;
 }
 
-interface PopulatedContact {
-  _id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  company?: string;
-  tags?: (PopulatedTag | string)[];
-  notes?: string;
-  createdBy?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  lastInteraction: Date;
-}
-
 interface ContactFilter {
   $or?: Array<Record<string, { $regex: string; $options: string }>>;
   company?: string;
@@ -50,7 +36,9 @@ async function getTagObjectIds(tagNames: string[]) {
 }
 
 // Helper function to safely transform tag data for frontend
-function transformTagsForFrontend(tags: (PopulatedTag | string)[]): string[] {
+function transformTagsForFrontend(
+  tags: (PopulatedTag | string)[]
+): (PopulatedTag | string)[] {
   if (!tags || !Array.isArray(tags)) return [];
 
   return tags
@@ -58,7 +46,12 @@ function transformTagsForFrontend(tags: (PopulatedTag | string)[]): string[] {
       if (typeof tag === "string") {
         return tag;
       } else if (tag && typeof tag === "object" && "tagName" in tag) {
-        return tag.tagName;
+        // Return the full tag object with color information
+        return {
+          _id: tag._id,
+          tagName: tag.tagName,
+          color: tag.color,
+        };
       } else {
         return tag?.toString() || "";
       }
@@ -240,9 +233,13 @@ export const GET = async (req: Request) => {
     ]);
     const uniqueCompanies = companiesAggregation.map((item) => item._id);
 
+    // Get all available tags for the frontend (replaces separate tags API call)
+    const availableTags = await TagsModel.find({}).sort({ tagName: 1 }).lean();
+
     return NextResponse.json({
       success: true,
       contacts: transformedContacts,
+      availableTags, // Include all tags in response
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalCount / limit),
