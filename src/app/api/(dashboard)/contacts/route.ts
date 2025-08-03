@@ -1,7 +1,8 @@
 import { MongoConnect } from "@/DB/MongoConnect";
-import { ContactsModel, TagsModel, UserModel } from "@/DB/MongoSchema";
+import { ContactsModel, TagsModel } from "@/DB/MongoSchema";
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
+import { requireAuth } from "@/lib/auth";
+import mongoose from "mongoose";
 
 // Type definitions
 interface PopulatedTag {
@@ -11,6 +12,7 @@ interface PopulatedTag {
 }
 
 interface ContactFilter {
+  createdBy?: mongoose.Types.ObjectId;
   $or?: Array<Record<string, { $regex: string; $options: string }>>;
   company?: string;
   tags?: { $in: string[] };
@@ -23,14 +25,40 @@ interface SortObject {
 await MongoConnect();
 
 // Helper function to safely get tag ObjectIds from tag names
-async function getTagObjectIds(tagNames: string[]) {
+async function getTagObjectIds(tagNames: string[], userObjectId: mongoose.Types.ObjectId) {
   if (!tagNames || tagNames.length === 0) return [];
 
   try {
-    const tagDocs = await TagsModel.find({ tagName: { $in: tagNames } });
-    return tagDocs.map((tag) => tag._id);
+    const tagIds = [];
+    for (const tagName of tagNames) {
+      // Look for existing tag first (user-specific)
+      let tag = await TagsModel.findOne({ 
+        tagName, 
+        createdBy: userObjectId 
+      });
+      
+      // If tag doesn't exist, create it
+      if (!tag) {
+        tag = await TagsModel.create({
+          tagName,
+          color: "#" + Math.floor(Math.random()*16777215).toString(16), // Random color
+          usageCount: 1,
+          createdBy: userObjectId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } else {
+        // Increment usage count
+        await TagsModel.findByIdAndUpdate(tag._id, {
+          $inc: { usageCount: 1 },
+        });
+      }
+      
+      tagIds.push(tag._id);
+    }
+    return tagIds;
   } catch (error) {
-    console.error("Error fetching tag ObjectIds:", error);
+    console.error("Error fetching/creating tag ObjectIds:", error);
     return [];
   }
 }
@@ -53,7 +81,7 @@ function transformTagsForFrontend(
           color: tag.color,
         };
       } else {
-        return tag?.toString() || "";
+        return String(tag || "");
       }
     })
     .filter(Boolean);
@@ -63,24 +91,11 @@ export const POST = async (req: Request) => {
   try {
     const body = await req.json();
 
-    // Get Firebase UID from headers and find MongoDB ObjectId
-    const headersList = headers();
-    const firebaseUid = headersList.get("user-id") || "placeholder-user-id"; // Temporary placeholder
+    // Get authenticated user
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
 
-    let userObjectId = null;
-    if (firebaseUid !== "placeholder-user-id") {
-      try {
-        const userDoc = await UserModel.findOne({ firebaseUid }).lean();
-        if (userDoc) {
-          userObjectId = userDoc._id;
-        }
-      } catch (error) {
-        console.warn(
-          `Error finding user for Firebase UID ${firebaseUid}:`,
-          error
-        );
-      }
-    }
+    await MongoConnect();
 
     // Handle tag creation/updating
     if (body.tags && body.tags.length > 0) {
@@ -102,7 +117,7 @@ export const POST = async (req: Request) => {
     }
 
     // Get tag ObjectIds for the contact
-    const tagIds = await getTagObjectIds(body.tags || []);
+    const tagIds = await getTagObjectIds(body.tags || [], userObjectId);
 
     const newContact = await ContactsModel.create({
       ...body,
@@ -139,6 +154,9 @@ export const POST = async (req: Request) => {
 
 export const GET = async (req: Request) => {
   try {
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
+
     const url = new URL(req.url);
 
     // Extract query parameters
@@ -160,8 +178,10 @@ export const GET = async (req: Request) => {
       limit,
     });
 
-    // Build the filter object
-    const filter: ContactFilter = {};
+    // Build the filter object with user-specific filtering
+    const filter: ContactFilter = {
+      createdBy: userObjectId,
+    };
 
     // Search functionality
     if (searchTerm) {
@@ -179,10 +199,13 @@ export const GET = async (req: Request) => {
       filter.company = companyFilter;
     }
 
-    // Tag filter - need to get tag ObjectId first
+    // Tag filter - need to get tag ObjectId first (user-specific)
     if (tagFilter) {
       try {
-        const tagDoc = await TagsModel.findOne({ tagName: tagFilter });
+        const tagDoc = await TagsModel.findOne({ 
+          tagName: tagFilter, 
+          createdBy: userObjectId 
+        });
         if (tagDoc) {
           filter.tags = { $in: [tagDoc._id] };
         }
@@ -240,16 +263,20 @@ export const GET = async (req: Request) => {
       tags: transformTagsForFrontend(contact.tags || []),
     }));
 
-    // Get unique companies for filter dropdown
+    // Get unique companies for filter dropdown (user-specific)
     const companiesAggregation = await ContactsModel.aggregate([
-      { $match: { company: { $exists: true, $ne: null, $ne: "" } } },
+      { $match: { 
+          createdBy: userObjectId,
+          company: { $exists: true, $nin: [null, ""] } 
+        } 
+      },
       { $group: { _id: "$company" } },
       { $sort: { _id: 1 } },
     ]);
     const uniqueCompanies = companiesAggregation.map((item) => item._id);
 
-    // Get all available tags for the frontend (replaces separate tags API call)
-    const availableTags = await TagsModel.find({}).sort({ tagName: 1 }).lean();
+    // Get all available tags for the frontend (user-specific)
+    const availableTags = await TagsModel.find({ createdBy: userObjectId }).sort({ tagName: 1 }).lean();
 
     return NextResponse.json({
       success: true,
@@ -280,6 +307,9 @@ export const GET = async (req: Request) => {
 
 export const DELETE = async (req: Request) => {
   try {
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
+
     const url = new URL(req.url);
     const _id = url.searchParams.get("id");
 
@@ -293,10 +323,23 @@ export const DELETE = async (req: Request) => {
       );
     }
 
-    // Get the contact first to update tag usage counts
-    const contact = await ContactsModel.findById(_id).populate("tags");
+    // Get the contact first to update tag usage counts and verify ownership
+    const contact = await ContactsModel.findOne({ 
+      _id, 
+      createdBy: userObjectId 
+    }).populate("tags");
 
-    if (contact && contact.tags) {
+    if (!contact) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Contact not found or access denied",
+        },
+        { status: 404 }
+      );
+    }
+
+    if (contact.tags) {
       // Decrease usage count for each tag
       for (const tag of contact.tags) {
         await TagsModel.findByIdAndUpdate(tag._id, {
@@ -305,7 +348,11 @@ export const DELETE = async (req: Request) => {
       }
     }
 
-    const response = await ContactsModel.deleteOne({ _id });
+    const response = await ContactsModel.deleteOne({ 
+      _id, 
+      createdBy: userObjectId 
+    });
+    
     return NextResponse.json({
       success: true,
       message: "Contact deleted successfully",
@@ -326,6 +373,9 @@ export const DELETE = async (req: Request) => {
 
 export const PUT = async (req: Request) => {
   try {
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
+
     const body = await req.json();
     const url = new URL(req.url);
     const _id = url.searchParams.get("contactId");
@@ -340,34 +390,28 @@ export const PUT = async (req: Request) => {
       );
     }
 
-    // Get Firebase UID from headers and find MongoDB ObjectId
-    const headersList = headers();
-    const firebaseUid = headersList.get("user-id") || "placeholder-user-id";
-
-    let userObjectId = null;
-    if (firebaseUid !== "placeholder-user-id") {
-      try {
-        const userDoc = await UserModel.findOne({ firebaseUid }).lean();
-        if (userDoc) {
-          userObjectId = userDoc._id;
-        }
-      } catch (error) {
-        console.warn(
-          `Error finding user for Firebase UID ${firebaseUid}:`,
-          error
-        );
-      }
-    }
-
     console.log("Updating contact with ID:", _id);
     console.log("Update data received:", body);
 
-    // Get the existing contact to compare tags
-    const existingContact = await ContactsModel.findById(_id).populate("tags");
+    // Get the existing contact to compare tags and verify ownership
+    const existingContact = await ContactsModel.findOne({ 
+      _id, 
+      createdBy: userObjectId 
+    }).populate("tags");
+
+    if (!existingContact) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Contact not found or access denied",
+        },
+        { status: 404 }
+      );
+    }
 
     // Handle tag updates
     if (body.tags && body.tags.length > 0) {
-      // Decrease usage count for removed tags
+      // Decrease usage count for removed tags (user-specific)
       if (existingContact && existingContact.tags) {
         const oldTagNames = existingContact.tags.map(
           (tag: PopulatedTag) => tag.tagName
@@ -378,36 +422,19 @@ export const PUT = async (req: Request) => {
 
         for (const tagName of removedTags) {
           await TagsModel.findOneAndUpdate(
-            { tagName },
+            { tagName, createdBy: userObjectId },
             { $inc: { usageCount: -1 } }
           );
         }
       }
 
-      // Create/update tags and increase usage count
-      for (const tagName of body.tags) {
-        await TagsModel.findOneAndUpdate(
-          { tagName },
-          {
-            $inc: { usageCount: 1 },
-            $setOnInsert: {
-              color: "#3B82F6",
-              createdBy: existingContact?.createdBy || userObjectId,
-              createdAt: new Date(),
-            },
-            updatedAt: new Date(),
-          },
-          { upsert: true, new: true }
-        );
-      }
-
-      // Get tag ObjectIds for the contact
-      const tagIds = await getTagObjectIds(body.tags);
+      // Get tag ObjectIds for the contact (this will create/update tags as needed)
+      const tagIds = await getTagObjectIds(body.tags, userObjectId);
       body.tags = tagIds;
     }
 
-    const updatedContact = await ContactsModel.findByIdAndUpdate(
-      _id,
+    const updatedContact = await ContactsModel.findOneAndUpdate(
+      { _id, createdBy: userObjectId },
       {
         ...body,
         updatedAt: new Date(),

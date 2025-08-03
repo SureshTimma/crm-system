@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { MongoConnect } from "@/DB/MongoConnect";
 import { ContactsModel, ActivityModel, TagsModel } from "@/DB/MongoSchema";
+import { requireAuth } from "@/lib/auth";
+import mongoose from "mongoose";
 
 // TypeScript interfaces for proper typing
 interface DashboardStats {
@@ -39,7 +41,12 @@ interface DashboardResponse {
 
 export const GET = async () => {
   try {
-    console.log("🚀 DASHBOARD API: Starting single optimized request");
+    console.log("🚀 DASHBOARD API: Starting user-specific request");
+    
+    // Get authenticated user
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
+    
     await MongoConnect();
 
     // Calculate fixed date ranges (no dynamic filtering)
@@ -47,30 +54,33 @@ export const GET = async () => {
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    console.log("📊 DASHBOARD API: Running aggregation queries...");
+    console.log("📊 DASHBOARD API: Running user-specific aggregation queries for user:", user._id);
 
-    // 1. Get Summary Statistics (no filtering, just basic counts)
+    // 1. Get Summary Statistics (user-specific)
     const [totalContacts, newContactsThisWeek, totalActivities, activeTags] =
       await Promise.all([
-        ContactsModel.countDocuments({}),
+        ContactsModel.countDocuments({ createdBy: userObjectId }),
         ContactsModel.countDocuments({
+          createdBy: userObjectId,
           createdAt: { $gte: oneWeekAgo },
         }),
-        ActivityModel.countDocuments({}),
+        ActivityModel.countDocuments({ user: userObjectId }),
         TagsModel.countDocuments({
+          createdBy: userObjectId,
           usageCount: { $gt: 0 },
         }),
       ]);
 
-    console.log("📈 DASHBOARD API: Stats calculated:", {
+    console.log("📈 DASHBOARD API: User-specific stats calculated:", {
       totalContacts,
       newContactsThisWeek,
       totalActivities,
       activeTags,
     });
 
-    // 2. Get Contacts by Company (Top 5) - No filtering
+    // 2. Get Contacts by Company (Top 5) - User-specific
     const contactsByCompanyAgg = await ContactsModel.aggregate([
+      { $match: { createdBy: userObjectId } },
       {
         $group: {
           _id: { $ifNull: ["$company", "No Company"] },
@@ -94,10 +104,11 @@ export const GET = async () => {
       },
     ]);
 
-    // 3. Get Activities Timeline (Last 30 days fixed) - No filtering
+    // 3. Get Activities Timeline (Last 30 days fixed) - User-specific
     const activityTimelineAgg = await ActivityModel.aggregate([
       {
         $match: {
+          user: userObjectId,
           timestamp: { $gte: thirtyDaysAgo },
         },
       },
@@ -131,11 +142,12 @@ export const GET = async () => {
       });
     }
 
-    // 4. Get Tag Distribution with populate optimization
-    console.log("🏷️ DASHBOARD API: Getting tag distribution...");
+    // 4. Get Tag Distribution with populate optimization - User-specific
+    console.log("🏷️ DASHBOARD API: Getting user-specific tag distribution...");
     const tagDistributionAgg = await TagsModel.aggregate([
       {
         $match: {
+          createdBy: userObjectId,
           usageCount: { $gt: 0 },
         },
       },

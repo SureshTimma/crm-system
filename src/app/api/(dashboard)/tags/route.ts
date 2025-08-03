@@ -1,22 +1,22 @@
 import { MongoConnect } from "@/DB/MongoConnect";
 import { TagsModel } from "@/DB/MongoSchema";
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
+import { requireAuth } from "@/lib/auth";
+import mongoose from "mongoose";
 
 export const POST = async (req: Request) => {
   try {
     await MongoConnect();
-    const body = await req.json();
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
 
-    // Get user ID from headers (you'll need to implement auth middleware)
-    const headersList = headers();
-    const userId = headersList.get("user-id") || "placeholder-user-id"; // Temporary placeholder
+    const body = await req.json();
 
     const response = await TagsModel.create({
       tagName: body.tagName,
       color: body.color,
       usageCount: body.usageCount || 0,
-      createdBy: userId !== "placeholder-user-id" ? userId : undefined,
+      createdBy: userObjectId,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -42,11 +42,13 @@ export const POST = async (req: Request) => {
 export const GET = async () => {
   try {
     await MongoConnect();
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
 
     // First try with population, fallback to basic query if it fails
     let tags;
     try {
-      tags = await TagsModel.find({})
+      tags = await TagsModel.find({ createdBy: userObjectId })
         .populate({
           path: "createdBy",
           select: "name email",
@@ -58,7 +60,7 @@ export const GET = async () => {
         "Population failed, falling back to basic query:",
         populateError
       );
-      tags = await TagsModel.find({}).sort({ createdAt: -1 });
+      tags = await TagsModel.find({ createdBy: userObjectId }).sort({ createdAt: -1 });
     }
 
     return NextResponse.json({
@@ -81,17 +83,31 @@ export const GET = async () => {
 export const PUT = async (req: Request) => {
   try {
     await MongoConnect();
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
+
     const body = await req.json();
     const url = new URL(req.url);
     const tagId = url.searchParams.get("tagId");
-    const updatedTag = await TagsModel.findByIdAndUpdate(
-      tagId,
+    
+    const updatedTag = await TagsModel.findOneAndUpdate(
+      { _id: tagId, createdBy: userObjectId },
       {
         ...body,
         updatedAt: new Date(),
       },
       { new: true } // Return the updated document
     );
+
+    if (!updatedTag) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Tag not found or access denied",
+        },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -114,9 +130,26 @@ export const PUT = async (req: Request) => {
 export const DELETE = async (req: Request) => {
   try {
     await MongoConnect();
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
+
     const url = new URL(req.url);
     const tagId = url.searchParams.get("id");
-    const deletedTag = await TagsModel.findByIdAndDelete(tagId);
+    
+    const deletedTag = await TagsModel.findOneAndDelete({ 
+      _id: tagId, 
+      createdBy: userObjectId 
+    });
+
+    if (!deletedTag) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Tag not found or access denied",
+        },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

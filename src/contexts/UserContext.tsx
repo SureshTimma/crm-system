@@ -6,7 +6,8 @@ import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import axios from "axios";
 
 interface User {
-  uid: string;
+  _id: string; // MongoDB ObjectId
+  uid: string; // Firebase UID
   email: string;
   name: string;
   displayName?: string;
@@ -59,8 +60,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       if (dbUser) {
         setUser(dbUser);
       } else {
-        // Fallback to Firebase user data
+        // Fallback to Firebase user data - but we won't have MongoDB _id
         setUser({
+          _id: "", // No MongoDB ObjectId available
           uid: auth.currentUser.uid,
           email: auth.currentUser.email || "",
           name: auth.currentUser.displayName || "User",
@@ -97,8 +99,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
             if (dbUser) {
               setUser(dbUser);
             } else {
-              // Fallback to Firebase user data
+              // Fallback to Firebase user data - but we won't have MongoDB _id
               setUser({
+                _id: "", // No MongoDB ObjectId available
                 uid: firebaseUser.uid,
                 email: firebaseUser.email || "",
                 name: firebaseUser.displayName || "User",
