@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   OpenAIService,
   getFallbackResponse,
-} from "../../components/services/openaiService";
+} from "../../components/chat/openaiService";
 
 export async function POST(request: NextRequest) {
   try {

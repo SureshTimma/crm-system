@@ -3,9 +3,9 @@ import React, { useEffect, useState } from "react";
 
 // Import modular components
 import DashboardSummary from "@/app/components/dashboard/DashboardSummary";
-import ContactsByCompanyChart from "@/app/components/charts/ContactsByCompanyChart";
-import ActivitiesTimelineChart from "@/app/components/charts/ActivitiesTimelineChart";
-import TagDistributionChart from "@/app/components/charts/TagDistributionChart";
+import ContactsByCompanyChart from "@/app/components/dashboard/ContactsByCompanyChart";
+import ActivitiesTimelineChart from "@/app/components/dashboard/ActivitiesTimelineChart";
+import TagDistributionChart from "@/app/components/dashboard/TagDistributionChart";
 
 // Import updated services with proper ObjectId support
 import {
@@ -14,7 +14,7 @@ import {
   type Contact,
   type Activity,
   type Tag,
-} from "@/app/components/services/dashboardService";
+} from "@/app/components/dashboard/dashboardService";
 
 const DashboardPage = () => {
   // State for dashboard data

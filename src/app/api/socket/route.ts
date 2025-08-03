@@ -4,7 +4,7 @@ import { createServer } from "http";
 import {
   OpenAIService,
   getFallbackResponse,
-} from "../../components/services/openaiService";
+} from "../../components/chat/openaiService";
 
 // Store the IO instance globally
 let io: Server;
