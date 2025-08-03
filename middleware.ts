@@ -19,7 +19,6 @@ export async function middleware(req: NextRequest) {
 
   // Allow public routes
   if (
-    req.nextUrl.pathname === "/" ||
     req.nextUrl.pathname.startsWith("/login") ||
     req.nextUrl.pathname.startsWith("/register") ||
     req.nextUrl.pathname.startsWith("/_next") ||
@@ -60,6 +59,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|login|register|$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|login|register).*)",
   ],
 };
