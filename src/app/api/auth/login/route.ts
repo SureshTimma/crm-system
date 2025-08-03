@@ -17,7 +17,7 @@ if (!getApps().length) {
 
 // console.log(process.env.FIREBASE_CLIENT_EMAIL, process.env.FIREBASE_PRIVATE_KEY);
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const { idToken } = await request.json();
 
@@ -40,7 +40,12 @@ export async function POST(request: NextRequest) {
     // Check if user exists in MongoDB
     let user = await UserModel.findOne({
       firebaseUid: decodedToken.uid,
-    }).lean();
+    }).lean<{
+      _id: string;
+      firebaseUid: string;
+      name: string;
+      email: string;
+    }>();
 
     if (!user) {
       // User doesn't exist in MongoDB, create them
@@ -54,7 +59,12 @@ export async function POST(request: NextRequest) {
           password: "firebase-auth", // Default since using Firebase auth
         });
         console.log("User created in MongoDB:", newUser._id.toString());
-        user = newUser;
+        user = {
+          _id: newUser._id.toString(),
+          firebaseUid: newUser.firebaseUid,
+          name: newUser.name,
+          email: newUser.email,
+        };
       } catch (createError) {
         console.error("Error creating user in MongoDB:", createError);
         // Continue with login even if user creation fails

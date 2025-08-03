@@ -4,7 +4,7 @@ import {
   getFallbackResponse,
 } from "../../components/chat/openaiService";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const { message, conversationId, userId } = body;
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   return NextResponse.json({
     message: "Chat API is running",
     endpoints: {

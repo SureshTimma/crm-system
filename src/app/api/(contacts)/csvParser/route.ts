@@ -13,7 +13,7 @@ interface CSVRow {
   tags?: string;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     await MongoConnect();
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Parse CSV first
-    return new Promise(async (resolve) => {
+    return new Promise<NextResponse>(async (resolve) => {
       const readable = Readable.from([text]);
 
       readable

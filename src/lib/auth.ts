@@ -21,7 +21,12 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
     }
 
     // Find user by Firebase UID to get MongoDB ObjectId
-    const user = await UserModel.findOne({ firebaseUid }).lean();
+    const user = await UserModel.findOne({ firebaseUid }).lean<{
+      _id: string;
+      firebaseUid: string;
+      name: string;
+      email: string;
+    }>();
 
     if (!user) {
       return null;

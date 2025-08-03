@@ -107,7 +107,7 @@ function initSocket() {
   return io;
 }
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     initSocket();
     return NextResponse.json({ message: "Socket.IO server initialized" });
@@ -120,7 +120,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     initSocket();

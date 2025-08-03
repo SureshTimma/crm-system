@@ -5,7 +5,7 @@ import { UserModel } from "@/DB/MongoSchema";
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ uid: string }> }
-) {
+): Promise<NextResponse> {
   try {
     await MongoConnect();
 
@@ -19,7 +19,12 @@ export async function GET(
     }
 
     // Find user by Firebase UID
-    const user = await UserModel.findOne({ firebaseUid: uid }).lean();
+    const user = await UserModel.findOne({ firebaseUid: uid }).lean<{
+      _id: string;
+      firebaseUid: string;
+      name: string;
+      email: string;
+    }>();
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

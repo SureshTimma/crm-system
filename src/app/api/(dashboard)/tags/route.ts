@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import mongoose from "mongoose";
 
-export const POST = async (req: Request) => {
+export const POST = async (req: Request): Promise<NextResponse> => {
   try {
     await MongoConnect();
     const user = await requireAuth();
@@ -39,7 +39,7 @@ export const POST = async (req: Request) => {
   }
 };
 
-export const GET = async () => {
+export const GET = async (): Promise<NextResponse> => {
   try {
     await MongoConnect();
     const user = await requireAuth();
@@ -82,7 +82,7 @@ export const GET = async () => {
   }
 };
 
-export const PUT = async (req: Request) => {
+export const PUT = async (req: Request): Promise<NextResponse> => {
   try {
     await MongoConnect();
     const user = await requireAuth();
@@ -129,7 +129,7 @@ export const PUT = async (req: Request) => {
   }
 };
 
-export const DELETE = async (req: Request) => {
+export const DELETE = async (req: Request): Promise<NextResponse> => {
   try {
     await MongoConnect();
     const user = await requireAuth();

@@ -1,6 +1,51 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Types } from "mongoose";
 const Schema = mongoose.Schema;
 const ObjectId = Schema.ObjectId;
+
+// TypeScript interfaces
+export interface IUser extends Document {
+  _id: Types.ObjectId;
+  firebaseUid: string;
+  name: string;
+  email: string;
+  password: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IContact extends Document {
+  _id: Types.ObjectId;
+  name: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  tags: Types.ObjectId[];
+  notes?: string;
+  createdBy: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+  lastInteraction: Date;
+}
+
+export interface ITag extends Document {
+  _id: Types.ObjectId;
+  tagName: string;
+  color: string;
+  usageCount: number;
+  createdBy: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IActivity extends Document {
+  _id: Types.ObjectId;
+  user: Types.ObjectId;
+  action: string;
+  entityType: string;
+  entityId: Types.ObjectId;
+  entityName: string;
+  timestamp: Date;
+}
 
 const UserSchema = new Schema({
   _id: { type: ObjectId, auto: true }, // MongoDB generated ObjectId
@@ -43,10 +88,10 @@ const ActivitySchema = new Schema({
   timestamp: { type: Date, default: Date.now },
 });
 
-const UserModel = mongoose.models.User || mongoose.model("User", UserSchema);
+const UserModel = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
 const ContactsModel =
-  mongoose.models.Contact || mongoose.model("Contact", contactSchema);
-const TagsModel = mongoose.models.Tag || mongoose.model("Tag", tagsSchema);
+  mongoose.models.Contact || mongoose.model<IContact>("Contact", contactSchema);
+const TagsModel = mongoose.models.Tag || mongoose.model<ITag>("Tag", tagsSchema);
 const ActivityModel =
-  mongoose.models.Activity || mongoose.model("Activity", ActivitySchema);
+  mongoose.models.Activity || mongoose.model<IActivity>("Activity", ActivitySchema);
 export { UserModel, ContactsModel, TagsModel, ActivityModel };

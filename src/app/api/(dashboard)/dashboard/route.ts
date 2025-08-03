@@ -39,7 +39,7 @@ interface DashboardResponse {
   };
 }
 
-export const GET = async () => {
+export const GET = async (): Promise<NextResponse> => {
   try {
     console.log("🚀 DASHBOARD API: Starting user-specific request");
 
@@ -200,7 +200,7 @@ export const GET = async () => {
 };
 
 // Optional: POST endpoint for dashboard preferences (removed - not required)
-export const POST = async () => {
+export const POST = async (): Promise<NextResponse> => {
   return NextResponse.json(
     {
       success: false,

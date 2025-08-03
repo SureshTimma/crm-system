@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export async function POST() {
+export async function POST(): Promise<NextResponse> {
   try {
     // Clear the session cookie
     const response = NextResponse.json({

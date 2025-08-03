@@ -9,10 +9,15 @@ if (!MONGODB_URI) {
 }
 
 // Global variable to cache the connection
-let cached = (global as any).mongoose;
+interface MongooseCache {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
+}
+
+let cached = (global as unknown as { mongoose?: MongooseCache }).mongoose;
 
 if (!cached) {
-  cached = (global as any).mongoose = { conn: null, promise: null };
+  cached = (global as unknown as { mongoose: MongooseCache }).mongoose = { conn: null, promise: null };
 }
 
 export const MongoConnect = async () => {

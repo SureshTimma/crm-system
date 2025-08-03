@@ -12,7 +12,7 @@ interface ActivityFilter {
 
 await MongoConnect();
 
-export const GET = async (req: Request) => {
+export const GET = async (req: Request): Promise<NextResponse> => {
   try {
     const user = await requireAuth();
     const userObjectId = new mongoose.Types.ObjectId(user._id);
@@ -82,7 +82,7 @@ export const GET = async (req: Request) => {
   }
 };
 
-export const POST = async (req: Request) => {
+export const POST = async (req: Request): Promise<NextResponse> => {
   try {
     const user = await requireAuth();
     const userObjectId = new mongoose.Types.ObjectId(user._id);

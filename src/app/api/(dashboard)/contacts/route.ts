@@ -90,7 +90,7 @@ function transformTagsForFrontend(
     .filter(Boolean);
 }
 
-export const POST = async (req: Request) => {
+export const POST = async (req: Request): Promise<NextResponse> => {
   try {
     const body = await req.json();
 
@@ -155,7 +155,7 @@ export const POST = async (req: Request) => {
   }
 };
 
-export const GET = async (req: Request) => {
+export const GET = async (req: Request): Promise<NextResponse> => {
   try {
     const user = await requireAuth();
     const userObjectId = new mongoose.Types.ObjectId(user._id);
@@ -311,7 +311,7 @@ export const GET = async (req: Request) => {
   }
 };
 
-export const DELETE = async (req: Request) => {
+export const DELETE = async (req: Request): Promise<NextResponse> => {
   try {
     const user = await requireAuth();
     const userObjectId = new mongoose.Types.ObjectId(user._id);
@@ -378,7 +378,7 @@ export const DELETE = async (req: Request) => {
   }
 };
 
-export const PUT = async (req: Request) => {
+export const PUT = async (req: Request): Promise<NextResponse> => {
   try {
     const user = await requireAuth();
     const userObjectId = new mongoose.Types.ObjectId(user._id);
