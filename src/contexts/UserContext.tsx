@@ -11,6 +11,7 @@ interface User {
   email: string;
   name: string;
   displayName?: string;
+  profileImage?: string;
 }
 
 export type { User };
@@ -67,6 +68,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
           email: auth.currentUser.email || "",
           name: auth.currentUser.displayName || "User",
           displayName: auth.currentUser.displayName || undefined,
+          profileImage: auth.currentUser.photoURL || undefined,
         });
       }
     }
@@ -106,6 +108,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
                 email: firebaseUser.email || "",
                 name: firebaseUser.displayName || "User",
                 displayName: firebaseUser.displayName || undefined,
+                profileImage: firebaseUser.photoURL || undefined,
               });
             }
           } catch (err) {

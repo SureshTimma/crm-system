@@ -24,6 +24,8 @@ export async function GET(
       firebaseUid: string;
       name: string;
       email: string;
+      profileImage?: string;
+      profileImagePublicId?: string;
     }>();
 
     if (!user) {
@@ -36,6 +38,7 @@ export async function GET(
       firebaseUid: user.firebaseUid,
       name: user.name,
       email: user.email,
+      profileImage: user.profileImage || null,
     };
 
     return NextResponse.json({
