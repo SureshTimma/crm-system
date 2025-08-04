@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Send, Bot, User, Loader } from "lucide-react";
 import axios from "axios";
 
@@ -45,17 +45,61 @@ const HttpChatComponent: React.FC<HttpChatComponentProps> = ({
     inputRef.current?.focus();
   }, []);
 
-  // Load initial message
+  // Load conversation messages when conversationId changes
   useEffect(() => {
-    const welcomeMessage: Message = {
-      id: "welcome",
-      message:
-        "Hello! I'm your CRM AI assistant. I'm here to help you with customer management, sales processes, contact organization, and general CRM best practices. How can I assist you today?",
-      sender: "ai",
-      timestamp: new Date().toISOString(),
-      conversationId,
-    };
-    setMessages([welcomeMessage]);
+    if (conversationId && conversationId !== "default-conversation") {
+      loadConversationMessages();
+    } else {
+      // Load welcome message for new conversations
+      const welcomeMessage: Message = {
+        id: "welcome",
+        message:
+          "Hello! I'm your CRM AI assistant. I'm here to help you with customer management, sales processes, contact organization, and general CRM best practices. How can I assist you today?",
+        sender: "ai",
+        timestamp: new Date().toISOString(),
+        conversationId,
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [conversationId]);
+
+  const loadConversationMessages = useCallback(async () => {
+    try {
+      const response = await axios.get(`/api/conversations/${conversationId}`);
+      const data = response.data as {
+        success: boolean;
+        messages: Array<{
+          _id: string;
+          message: string;
+          sender: "user" | "ai";
+          timestamp: string;
+          conversationId: string;
+        }>;
+      };
+
+      if (data.success && data.messages) {
+        const formattedMessages: Message[] = data.messages.map((msg) => ({
+          id: msg._id,
+          message: msg.message,
+          sender: msg.sender,
+          timestamp: msg.timestamp,
+          conversationId: msg.conversationId,
+        }));
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error("Error loading conversation messages:", error);
+      // If error loading, show welcome message
+      const welcomeMessage: Message = {
+        id: "welcome",
+        message:
+          "Hello! I'm your CRM AI assistant. I'm here to help you with customer management, sales processes, contact organization, and general CRM best practices. How can I assist you today?",
+        sender: "ai",
+        timestamp: new Date().toISOString(),
+        conversationId,
+      };
+      setMessages([welcomeMessage]);
+    }
   }, [conversationId]);
 
   // Handle sending messages

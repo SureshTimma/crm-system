@@ -3,11 +3,20 @@ import {
   OpenAIService,
   getFallbackResponse,
 } from "../../components/chat/openaiService";
+import { MongoConnect } from "@/DB/MongoConnect";
+import { ChatModel, ConversationModel } from "@/DB/MongoSchema";
+import { requireAuth } from "@/lib/auth";
+import mongoose from "mongoose";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const user = await requireAuth();
+    const userObjectId = new mongoose.Types.ObjectId(user._id);
+
+    await MongoConnect();
+
     const body = await request.json();
-    const { message, conversationId, userId } = body;
+    const { message, conversationId } = body;
 
     if (!message || !message.trim()) {
       return NextResponse.json(
@@ -16,14 +25,44 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    let currentConversationId = conversationId;
+
+    // If no conversationId provided, create a new conversation
+    if (!currentConversationId) {
+      const newConversation = await ConversationModel.create({
+        user: userObjectId,
+        title: message.substring(0, 50) + (message.length > 50 ? "..." : ""),
+        createdAt: new Date(),
+        lastUpdated: new Date(),
+      });
+      currentConversationId = newConversation._id.toString();
+    } else {
+      // Update the lastUpdated timestamp of existing conversation
+      await ConversationModel.findByIdAndUpdate(
+        new mongoose.Types.ObjectId(currentConversationId),
+        { lastUpdated: new Date() }
+      );
+    }
+
+    const conversationObjectId = new mongoose.Types.ObjectId(currentConversationId);
+
+    // Save user message to database
+    await ChatModel.create({
+      user: userObjectId,
+      message: message.trim(),
+      sender: "user",
+      timestamp: new Date(),
+      conversationId: conversationObjectId,
+    });
+
     // Generate AI response
     let aiResponse: string;
 
     try {
       aiResponse = await OpenAIService.generateResponse(
         message,
-        conversationId || `conversation-${userId || "anonymous"}-${Date.now()}`,
-        userId || "anonymous"
+        currentConversationId,
+        user._id
       );
     } catch (error) {
       console.error("OpenAI service error:", error);
@@ -31,11 +70,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       aiResponse = getFallbackResponse();
     }
 
+    // Save AI response to database
+    await ChatModel.create({
+      user: userObjectId,
+      message: aiResponse,
+      sender: "ai",
+      timestamp: new Date(),
+      conversationId: conversationObjectId,
+    });
+
     return NextResponse.json({
       message: aiResponse,
       timestamp: new Date().toISOString(),
-      conversationId:
-        conversationId || `conversation-${userId || "anonymous"}-${Date.now()}`,
+      conversationId: currentConversationId,
       sender: "ai",
     });
   } catch (error) {

@@ -37,6 +37,23 @@ export interface ITag extends Document {
   updatedAt: Date;
 }
 
+export interface IChat extends Document {
+  _id: Types.ObjectId;
+  user: Types.ObjectId;
+  message: string;
+  sender: "user" | "ai";
+  timestamp: Date;
+  conversationId: Types.ObjectId;
+}
+
+export interface IConversation extends Document {
+  _id: Types.ObjectId;
+  user: Types.ObjectId;
+  title: string;
+  createdAt: Date;
+  lastUpdated: Date;
+}
+
 export interface IActivity extends Document {
   _id: Types.ObjectId;
   user: Types.ObjectId;
@@ -88,10 +105,61 @@ const ActivitySchema = new Schema({
   timestamp: { type: Date, default: Date.now },
 });
 
-const UserModel = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+const ChatSchema = new Schema({
+  user: {
+    type: ObjectId,
+    ref: "User",
+    required: true,
+  },
+
+  message: {
+    type: String,
+    required: true,
+  },
+
+  sender: {
+    type: String,
+    enum: ["user", "ai"],
+    required: true,
+  },
+
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+
+  conversationId: {
+    type: ObjectId,
+    ref: "Conversation",
+    required: true,
+    index: true,
+  },
+});
+
+const conversationSchema = new Schema({
+  user: { type: Types.ObjectId, ref: "User", required: true },
+  title: { type: String, default: "Untitled Conversation" },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  lastUpdated: {
+    type: Date,
+    default: Date.now,
+  }
+});
+
+const UserModel =
+  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
 const ContactsModel =
   mongoose.models.Contact || mongoose.model<IContact>("Contact", contactSchema);
-const TagsModel = mongoose.models.Tag || mongoose.model<ITag>("Tag", tagsSchema);
+const TagsModel =
+  mongoose.models.Tag || mongoose.model<ITag>("Tag", tagsSchema);
 const ActivityModel =
-  mongoose.models.Activity || mongoose.model<IActivity>("Activity", ActivitySchema);
-export { UserModel, ContactsModel, TagsModel, ActivityModel };
+  mongoose.models.Activity ||
+  mongoose.model<IActivity>("Activity", ActivitySchema);
+const ChatModel =
+  mongoose.models.Chat || mongoose.model<IChat>("Chat", ChatSchema);
+const ConversationModel =
+  mongoose.models.Conversation || mongoose.model<IConversation>("Conversation", conversationSchema);
+export { UserModel, ContactsModel, TagsModel, ActivityModel, ChatModel, ConversationModel };
