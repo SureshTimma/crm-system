@@ -35,27 +35,10 @@ async function getTagObjectIds(
     const tagIds = [];
     for (const tagName of tagNames) {
       // Look for existing tag first (user-specific)
-      let tag = await TagsModel.findOne({
+      const tag = await TagsModel.findOne({
         tagName,
         createdBy: userObjectId,
       });
-
-      // If tag doesn't exist, create it
-      if (!tag) {
-        tag = await TagsModel.create({
-          tagName,
-          color: "#" + Math.floor(Math.random() * 16777215).toString(16), // Random color
-          usageCount: 1,
-          createdBy: userObjectId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      } else {
-        // Increment usage count
-        await TagsModel.findByIdAndUpdate(tag._id, {
-          $inc: { usageCount: 1 },
-        });
-      }
 
       tagIds.push(tag._id);
     }
@@ -94,7 +77,6 @@ export const POST = async (req: Request): Promise<NextResponse> => {
   try {
     const body = await req.json();
 
-    // Get authenticated user
     const user = await requireAuth();
     const userObjectId = new mongoose.Types.ObjectId(user._id);
 
@@ -119,7 +101,6 @@ export const POST = async (req: Request): Promise<NextResponse> => {
       }
     }
 
-    // Get tag ObjectIds for the contact
     const tagIds = await getTagObjectIds(body.tags || [], userObjectId);
 
     const newContact = await ContactsModel.create({
@@ -131,7 +112,6 @@ export const POST = async (req: Request): Promise<NextResponse> => {
       lastInteraction: new Date(),
     });
 
-    // Populate the contact with tag details before returning
     const populatedContact = await ContactsModel.findById(newContact._id)
       .populate("tags", "tagName color")
       .populate("createdBy", "name email")
@@ -165,21 +145,10 @@ export const GET = async (req: Request): Promise<NextResponse> => {
     // Extract query parameters
     const searchTerm = url.searchParams.get("search") || "";
     const tagFilter = url.searchParams.get("tag") || "";
-    const companyFilter = url.searchParams.get("company") || "";
     const sortBy = url.searchParams.get("sortBy") || "createdAt";
     const sortOrder = url.searchParams.get("sortOrder") || "desc";
     const page = parseInt(url.searchParams.get("page") || "1");
     const limit = parseInt(url.searchParams.get("limit") || "50");
-
-    console.log("Query params:", {
-      searchTerm,
-      tagFilter,
-      companyFilter,
-      sortBy,
-      sortOrder,
-      page,
-      limit,
-    });
 
     // Build the filter object with user-specific filtering
     const filter: ContactFilter = {
@@ -197,11 +166,6 @@ export const GET = async (req: Request): Promise<NextResponse> => {
       ];
     }
 
-    // Company filter
-    if (companyFilter) {
-      filter.company = companyFilter;
-    }
-
     // Tag filter - need to get tag ObjectId first (user-specific)
     if (tagFilter) {
       try {
@@ -217,19 +181,13 @@ export const GET = async (req: Request): Promise<NextResponse> => {
       }
     }
 
-    console.log("MongoDB filter:", JSON.stringify(filter, null, 2));
-
-    // Build sort object
+    
     const sortObj: SortObject = {};
     sortObj[sortBy] = sortOrder === "asc" ? 1 : -1;
-
-    // Calculate pagination
     const skip = (page - 1) * limit;
-
-    // Get total count for pagination
     const totalCount = await ContactsModel.countDocuments(filter);
 
-    // First try with population
+    
     let contactsData;
     try {
       contactsData = await ContactsModel.find(filter)
@@ -252,7 +210,7 @@ export const GET = async (req: Request): Promise<NextResponse> => {
         "Population failed, falling back to basic query:",
         populateError
       );
-      // Fallback to basic query without population
+      
       contactsData = await ContactsModel.find(filter)
         .sort(sortObj)
         .skip(skip)
@@ -260,26 +218,11 @@ export const GET = async (req: Request): Promise<NextResponse> => {
         .lean();
     }
 
-    // Transform the populated data to match the frontend expectations
     const transformedContacts = contactsData.map((contact) => ({
       ...contact,
       tags: transformTagsForFrontend(contact.tags || []),
     }));
 
-    // Get unique companies for filter dropdown (user-specific)
-    const companiesAggregation = await ContactsModel.aggregate([
-      {
-        $match: {
-          createdBy: userObjectId,
-          company: { $exists: true, $nin: [null, ""] },
-        },
-      },
-      { $group: { _id: "$company" } },
-      { $sort: { _id: 1 } },
-    ]);
-    const uniqueCompanies = companiesAggregation.map((item) => item._id);
-
-    // Get all available tags for the frontend (user-specific)
     const availableTags = await TagsModel.find({ createdBy: userObjectId })
       .sort({ tagName: 1 })
       .lean();
@@ -287,16 +230,13 @@ export const GET = async (req: Request): Promise<NextResponse> => {
     return NextResponse.json({
       success: true,
       contacts: transformedContacts,
-      availableTags, // Include all tags in response
+      availableTags,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalCount / limit),
         totalCount,
         hasMore: skip + contactsData.length < totalCount,
-      },
-      filters: {
-        uniqueCompanies,
-      },
+      }
     });
   } catch (error) {
     console.error("Error fetching contacts:", error);
@@ -329,7 +269,6 @@ export const DELETE = async (req: Request): Promise<NextResponse> => {
       );
     }
 
-    // Get the contact first to update tag usage counts and verify ownership
     const contact = await ContactsModel.findOne({
       _id,
       createdBy: userObjectId,
@@ -346,7 +285,6 @@ export const DELETE = async (req: Request): Promise<NextResponse> => {
     }
 
     if (contact.tags) {
-      // Decrease usage count for each tag (user-specific)
       for (const tag of contact.tags) {
         await TagsModel.findOneAndUpdate(
           { _id: tag._id, createdBy: userObjectId },
@@ -387,38 +325,13 @@ export const PUT = async (req: Request): Promise<NextResponse> => {
     const url = new URL(req.url);
     const _id = url.searchParams.get("contactId");
 
-    if (!_id) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Contact ID is required",
-        },
-        { status: 400 }
-      );
-    }
-
-    console.log("Updating contact with ID:", _id);
-    console.log("Update data received:", body);
-
-    // Get the existing contact to compare tags and verify ownership
     const existingContact = await ContactsModel.findOne({
       _id,
       createdBy: userObjectId,
     }).populate("tags");
 
-    if (!existingContact) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Contact not found or access denied",
-        },
-        { status: 404 }
-      );
-    }
-
     // Handle tag updates
     if (body.tags && body.tags.length > 0) {
-      // Decrease usage count for removed tags (user-specific)
       if (existingContact && existingContact.tags) {
         const oldTagNames = existingContact.tags.map(
           (tag: PopulatedTag) => tag.tagName
@@ -435,7 +348,6 @@ export const PUT = async (req: Request): Promise<NextResponse> => {
         }
       }
 
-      // Get tag ObjectIds for the contact (this will create/update tags as needed)
       const tagIds = await getTagObjectIds(body.tags, userObjectId);
       body.tags = tagIds;
     }
@@ -446,14 +358,12 @@ export const PUT = async (req: Request): Promise<NextResponse> => {
         ...body,
         updatedAt: new Date(),
       },
-      { new: true } // Return the updated document
+      { new: true }
     )
       .populate("tags", "tagName color")
       .populate("createdBy", "name email");
 
-    console.log("Updated contact:", updatedContact);
 
-    // Transform the populated data to match the frontend expectations
     const transformedContact = {
       ...updatedContact?.toObject(),
       tags: transformTagsForFrontend(updatedContact?.tags || []),
