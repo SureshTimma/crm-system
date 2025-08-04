@@ -45,24 +45,6 @@ const HttpChatComponent: React.FC<HttpChatComponentProps> = ({
     inputRef.current?.focus();
   }, []);
 
-  // Load conversation messages when conversationId changes
-  useEffect(() => {
-    if (conversationId && conversationId !== "default-conversation") {
-      loadConversationMessages();
-    } else {
-      // Load welcome message for new conversations
-      const welcomeMessage: Message = {
-        id: "welcome",
-        message:
-          "Hello! I'm your CRM AI assistant. I'm here to help you with customer management, sales processes, contact organization, and general CRM best practices. How can I assist you today?",
-        sender: "ai",
-        timestamp: new Date().toISOString(),
-        conversationId,
-      };
-      setMessages([welcomeMessage]);
-    }
-  }, [conversationId]);
-
   const loadConversationMessages = useCallback(async () => {
     try {
       const response = await axios.get(`/api/conversations/${conversationId}`);
@@ -101,6 +83,24 @@ const HttpChatComponent: React.FC<HttpChatComponentProps> = ({
       setMessages([welcomeMessage]);
     }
   }, [conversationId]);
+
+  // Load conversation messages when conversationId changes
+  useEffect(() => {
+    if (conversationId && conversationId !== "default-conversation") {
+      loadConversationMessages();
+    } else {
+      // Load welcome message for new conversations
+      const welcomeMessage: Message = {
+        id: "welcome",
+        message:
+          "Hello! I'm your CRM AI assistant. I'm here to help you with customer management, sales processes, contact organization, and general CRM best practices. How can I assist you today?",
+        sender: "ai",
+        timestamp: new Date().toISOString(),
+        conversationId,
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [conversationId, loadConversationMessages]);
 
   // Handle sending messages
   const sendMessage = async () => {
@@ -156,6 +156,41 @@ const HttpChatComponent: React.FC<HttpChatComponentProps> = ({
     }
   };
 
+  // Send quick insight requests
+  const sendInsightRequest = async (type: 'insights' | 'actions' | 'engagement') => {
+    setIsLoading(true);
+    
+    try {
+      const response = await axios.post('/api/ai-insights', { type });
+      const data = response.data as { insight: string };
+      
+      const insightMessage: Message = {
+        id: Date.now().toString(),
+        message: data.insight,
+        sender: "ai",
+        timestamp: new Date().toISOString(),
+        conversationId,
+      };
+
+      setMessages((prev) => [...prev, insightMessage]);
+    } catch (error) {
+      console.error('Error getting insights:', error);
+      
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        message: "Sorry, I couldn't generate insights right now. Please try again.",
+        sender: "ai",
+        timestamp: new Date().toISOString(),
+        conversationId,
+        error: true,
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -191,6 +226,33 @@ const HttpChatComponent: React.FC<HttpChatComponentProps> = ({
         >
           Clear Chat
         </button>
+      </div>
+
+      {/* Quick Insights */}
+      <div className="px-4 py-2 border-b border-gray-200 bg-gray-50">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => sendInsightRequest('insights')}
+            disabled={isLoading}
+            className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            📊 CRM Insights
+          </button>
+          <button
+            onClick={() => sendInsightRequest('actions')}
+            disabled={isLoading}
+            className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            🎯 Next Actions
+          </button>
+          <button
+            onClick={() => sendInsightRequest('engagement')}
+            disabled={isLoading}
+            className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            👥 Engagement Analysis
+          </button>
+        </div>
       </div>
 
       {/* Messages */}

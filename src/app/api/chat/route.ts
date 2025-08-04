@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  OpenAIService,
-  getFallbackResponse,
-} from "../../components/chat/openaiService";
+import { EnhancedAIService } from "@/lib/aiService";
 import { MongoConnect } from "@/DB/MongoConnect";
 import { ChatModel, ConversationModel } from "@/DB/MongoSchema";
 import { requireAuth } from "@/lib/auth";
@@ -57,19 +54,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       conversationId: conversationObjectId,
     });
 
-    // Generate AI response
+    // Generate AI response with CRM context
     let aiResponse: string;
 
     try {
-      aiResponse = await OpenAIService.generateResponse(
+      aiResponse = await EnhancedAIService.processWithCRMContext(
         message,
-        currentConversationId,
-        user._id
+        user._id,
+        currentConversationId
       );
     } catch (error) {
-      console.error("OpenAI service error:", error);
-      // Use fallback response if OpenAI fails
-      aiResponse = getFallbackResponse();
+      console.error("Enhanced AI service error:", error);
+      // Use fallback response if AI fails
+      aiResponse = "I'm sorry, I'm having trouble processing your request right now. Please try again in a moment.";
     }
 
     // Save AI response to database
