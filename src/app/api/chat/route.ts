@@ -44,7 +44,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const conversationObjectId = new mongoose.Types.ObjectId(currentConversationId);
+    const conversationObjectId = new mongoose.Types.ObjectId(
+      currentConversationId
+    );
 
     // Save user message to database
     await ChatModel.create({

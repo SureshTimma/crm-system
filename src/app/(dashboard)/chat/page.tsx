@@ -22,7 +22,9 @@ interface ApiResponse {
 const ChatPage = () => {
   const { user, loading } = useUser();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
   const [loadingConversations, setLoadingConversations] = useState(true);
 
   // Fetch conversations when component mounts
@@ -73,14 +75,22 @@ const ChatPage = () => {
     }
 
     try {
-      const response = await axios.delete(`/api/conversations?conversationId=${conversationId}`);
+      const response = await axios.delete(
+        `/api/conversations?conversationId=${conversationId}`
+      );
       const data = response.data as ApiResponse;
       if (data.success) {
-        setConversations((prev) => prev.filter((c) => c._id !== conversationId));
+        setConversations((prev) =>
+          prev.filter((c) => c._id !== conversationId)
+        );
         // If deleted conversation was current, select another one
         if (currentConversationId === conversationId) {
-          const remaining = conversations.filter((c) => c._id !== conversationId);
-          setCurrentConversationId(remaining.length > 0 ? remaining[0]._id : null);
+          const remaining = conversations.filter(
+            (c) => c._id !== conversationId
+          );
+          setCurrentConversationId(
+            remaining.length > 0 ? remaining[0]._id : null
+          );
         }
       }
     } catch (error) {
@@ -91,8 +101,10 @@ const ChatPage = () => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+    const diffInDays = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
     if (diffInDays === 0) {
       return "Today";
     } else if (diffInDays === 1) {
@@ -133,7 +145,9 @@ const ChatPage = () => {
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Conversations</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Conversations
+            </h2>
             <button
               onClick={createNewConversation}
               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

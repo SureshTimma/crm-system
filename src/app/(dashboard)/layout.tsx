@@ -86,22 +86,6 @@ const AIIcon = () => (
   </svg>
 );
 
-const SearchIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-    />
-  </svg>
-);
-
 const BellIcon = () => (
   <svg
     className="w-6 h-6"
@@ -181,7 +165,6 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, logout } = useUser();
@@ -279,28 +262,7 @@ export default function DashboardLayout({
             <MenuIcon />
           </button>
 
-          <div className="flex-1 px-4 flex justify-between">
-            {/* Search bar */}
-            <div className="flex-1 flex">
-              <form
-                className="w-full flex md:ml-0 max-w-lg"
-                onSubmit={(e) => e.preventDefault()}
-              >
-                <div className="relative w-full text-gray-400 focus-within:text-gray-600">
-                  <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none pl-3">
-                    <SearchIcon />
-                  </div>
-                  <input
-                    className="block w-full h-full pl-10 pr-3 py-2 border-transparent text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-0 focus:border-transparent bg-gray-50 rounded-md"
-                    placeholder="Search contacts, activities..."
-                    type="search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </form>
-            </div>
-
+          <div className="flex-1 px-4 flex justify-end">
             {/* Right side */}
             <div className="ml-4 flex items-center md:ml-6 space-x-4">
               {/* Notifications */}

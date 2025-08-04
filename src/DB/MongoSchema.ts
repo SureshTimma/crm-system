@@ -146,7 +146,7 @@ const conversationSchema = new Schema({
   lastUpdated: {
     type: Date,
     default: Date.now,
-  }
+  },
 });
 
 const UserModel =
@@ -161,5 +161,13 @@ const ActivityModel =
 const ChatModel =
   mongoose.models.Chat || mongoose.model<IChat>("Chat", ChatSchema);
 const ConversationModel =
-  mongoose.models.Conversation || mongoose.model<IConversation>("Conversation", conversationSchema);
-export { UserModel, ContactsModel, TagsModel, ActivityModel, ChatModel, ConversationModel };
+  mongoose.models.Conversation ||
+  mongoose.model<IConversation>("Conversation", conversationSchema);
+export {
+  UserModel,
+  ContactsModel,
+  TagsModel,
+  ActivityModel,
+  ChatModel,
+  ConversationModel,
+};
