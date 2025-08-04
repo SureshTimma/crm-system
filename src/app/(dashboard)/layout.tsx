@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser, type User } from "@/contexts/UserContext";
+import Image from "next/image";
 
 // Icons (you can replace with your preferred icon library)
 const HomeIcon = () => (
@@ -281,18 +282,28 @@ export default function DashboardLayout({
                   className="max-w-xs bg-white flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 >
-                  <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                    <span className="text-sm font-medium text-white">
-                      {user.name
-                        ? user.name
-                            .split(" ")
-                            .map((n: string) => n[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)
-                        : "U"}
-                    </span>
-                  </div>
+                  {user.profileImage ? (
+                    <Image
+                      src={user.profileImage}
+                      alt="Profile"
+                      width={32}
+                      height={32}
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                      <span className="text-sm font-medium text-white">
+                        {user.name
+                          ? user.name
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")
+                              .toUpperCase()
+                              .slice(0, 2)
+                          : "U"}
+                      </span>
+                    </div>
+                  )}
                   <span className="ml-3 text-gray-700 text-sm font-medium hidden lg:block">
                     {user.name || user.displayName || "User"}
                   </span>
@@ -301,31 +312,39 @@ export default function DashboardLayout({
 
                 {/* Dropdown menu */}
                 {userDropdownOpen && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
-                    <Link
-                      href="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  <>
+                    {/* Backdrop */}
+                    <div
+                      className="fixed inset-0 z-10"
                       onClick={() => setUserDropdownOpen(false)}
-                    >
-                      Your Profile
-                    </Link>
-                    <Link
-                      href="/settings"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setUserDropdownOpen(false)}
-                    >
-                      Settings
-                    </Link>
-                    <button
-                      onClick={() => {
-                        setUserDropdownOpen(false);
-                        handleLogout();
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Sign out
-                    </button>
-                  </div>
+                    />
+                    {/* Dropdown */}
+                    <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                      <Link
+                        href="/profile"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        Your Profile
+                      </Link>
+                      <Link
+                        href="/settings"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        Settings
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          handleLogout();
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -341,14 +360,6 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
-
-      {/* Click outside to close dropdown */}
-      {userDropdownOpen && (
-        <div
-          className="fixed inset-0 z-30"
-          onClick={() => setUserDropdownOpen(false)}
-        />
-      )}
     </div>
   );
 }
@@ -385,18 +396,28 @@ function SidebarContent({
       <div className="px-4 pb-4">
         <div className="flex items-center">
           <div className="flex-shrink-0">
-            <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
-              <span className="text-sm font-medium text-white">
-                {user.name
-                  ? user.name
-                      .split(" ")
-                      .map((n: string) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2)
-                  : "U"}
-              </span>
-            </div>
+            {user.profileImage ? (
+              <Image
+                src={user.profileImage}
+                alt="Profile"
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
+                <span className="text-sm font-medium text-white">
+                  {user.name
+                    ? user.name
+                        .split(" ")
+                        .map((n: string) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)
+                    : "U"}
+                </span>
+              </div>
+            )}
           </div>
           <div className="ml-3">
             <p className="text-sm font-medium text-gray-900">
